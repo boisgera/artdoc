@@ -1,0 +1,62 @@
+
+body {
+
+  section {
+    max-width: 32em;
+    margin: auto;
+    font-family: Alegreya;
+    font-size: 22px;
+
+    a {
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    a:link { color: black; }
+
+    a:visited { color: black; }
+
+    h1 {
+      font-size: 48px;
+      font-weight: bold;
+    }
+
+    h2 {
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    p {
+      text-align: justify;
+    }
+
+    code {
+      font-family: Inconsolata;
+    }
+
+    img {
+      width: 32em;
+    }
+
+    p.caption {
+      margin-top: 0.0em;
+      text-align: center;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    figure {
+      margin: 0px;
+    }
+
+    span.MathJax_SVG {
+      svg {
+        color: black;
+      }
+    }
+
+  }
+
+}
