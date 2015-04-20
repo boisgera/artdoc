@@ -1,6 +1,10 @@
 
 General Idea: handle LaTeX-heavy article-like markdown document to HTML conversion.
 
+  - deal with the analysis & use of metadata (ex: title, date, author, etc.)
+
+  - deployment scheme for the package ?
+
   - manage citations
 
   - deal with `equation` environment (from RawLatex to RawHTML ?). 
