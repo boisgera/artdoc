@@ -8,11 +8,11 @@ import setuptools_git
 # ------------------------------------------------------------------------------
 
 metadata = dict(
-  name = "artdoc",
-  version = "0.0.0",
-  author = u"Sébastien Boisgérault",
+  name         = "artdoc",
+  version      = "0.0.0",
+  author       = u"Sébastien Boisgérault",
   author_email = "Sebastien.Boisgerault@mines-paristech.fr",
-  license = "MIT",
+  license      = "MIT",
 )
 
 code = dict(
@@ -20,7 +20,9 @@ code = dict(
 )
 
 data = dict(
-  include_package_data = True,
+#  package_dir = {"": "."},
+  package_data = {"artdoc": ['data/*']},
+#  include_package_data = True,
 )
 
 scripts = dict(
