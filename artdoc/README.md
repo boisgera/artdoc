@@ -49,3 +49,9 @@ General Idea: handle LaTeX-heavy article-like markdown document to HTML conversi
 
   - table of contents / outline computation and (floating) menu stuff.
 
+  - dropcaps ? (https://github.com/adobe-webplatform/dropcap.js)
+
+  - smart underline (to be tweaked for Alegreya).
+
+  - floating figures (aside ?) ? Code used to generate the figures ?
+
