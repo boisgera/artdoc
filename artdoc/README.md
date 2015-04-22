@@ -63,4 +63,5 @@ General Idea: handle LaTeX-heavy article-like markdown document to HTML conversi
 
   - transform highlighted selection into large, blockquote-like blocks.
 
+  - the generation of PDF inside HTML is awful. Can we do better ?
 
