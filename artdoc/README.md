@@ -38,9 +38,14 @@ General Idea: handle LaTeX-heavy article-like markdown document to HTML conversi
 
   - deal with "--" that have not been replaced.
 
+  - manage "back to the top" with elevator.js :)
+
   - implement a "grey zone" for the block that is not in focus (to deal
     with the document as slides). May be complex, "block" is not a simple
     notion. But the document just looks fantastic when zoomed in, it could
     TOTALLY be used as a presentation.
 
   - format bibliography. Maybe link the citations to the bibliography ?
+
+  - table of contents / outline computation and (floating) menu stuff.
+
