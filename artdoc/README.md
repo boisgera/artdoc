@@ -55,3 +55,9 @@ General Idea: handle LaTeX-heavy article-like markdown document to HTML conversi
 
   - floating figures (aside ?) ? Code used to generate the figures ?
 
+  - (Fuzzy) text search and scroll / highlight ?
+
+  - work on the automatic sectioning of the document 
+
+  - special detection / handling of some blocks (such as Proofs).
+
