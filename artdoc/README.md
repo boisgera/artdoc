@@ -61,3 +61,6 @@ General Idea: handle LaTeX-heavy article-like markdown document to HTML conversi
 
   - special detection / handling of some blocks (such as Proofs).
 
+  - transform highlighted selection into large, blockquote-like blocks.
+
+
