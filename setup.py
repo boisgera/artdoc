@@ -20,9 +20,7 @@ code = dict(
 )
 
 data = dict(
-#  package_dir = {"": "."},
-  package_data = {"artdoc": ['data/*']},
-#  include_package_data = True,
+  include_package_data = True,
 )
 
 scripts = dict(

@@ -1,11 +1,25 @@
 
 body {
 
-  section {
     max-width: 32em;
     margin: auto;
     font-family: Alegreya;
     font-size: 22px;
+
+    .header {
+      h1 {
+        font-size: 48px;
+        font-weight: bold;
+      }
+      h2 {
+        font-size: 36px;
+        font-weight: bold;
+      }
+     h3 {
+        font-size: 22px;
+        font-weight: bold;
+      }
+    }
 
     a {
       text-decoration: none;
@@ -20,12 +34,12 @@ body {
     a:visited { color: black; }
 
     h1 {
-      font-size: 48px;
+      font-size: 36px;
       font-weight: bold;
     }
 
     h2 {
-      font-size: 32px;
+      font-size: 22px;
       font-weight: bold;
     }
 
@@ -34,7 +48,17 @@ body {
     }
 
     code {
+      background-color: rgb(235,235,235);
       font-family: Inconsolata;
+    }
+
+    pre {
+      margin: 1em 0em 1em 0em;
+      padding: 0.5em 1em 0.5em 1em;
+      background-color: rgb(235,235,235);
+      code {
+        color: black;
+      }
     }
 
     img {
@@ -57,6 +81,5 @@ body {
       }
     }
 
-  }
-
 }
+

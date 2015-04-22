@@ -1,33 +1,51 @@
-body section {
+body {
   max-width: 32em;
   margin: auto;
   font-family: Alegreya;
   font-size: 22px; }
-  body section a {
-    text-decoration: none; }
-  body section a:hover {
-    text-decoration: underline; }
-  body section a:link {
-    color: black; }
-  body section a:visited {
-    color: black; }
-  body section h1 {
+  body .header h1 {
     font-size: 48px;
     font-weight: bold; }
-  body section h2 {
-    font-size: 32px;
+  body .header h2 {
+    font-size: 36px;
     font-weight: bold; }
-  body section p {
+  body .header h3 {
+    font-size: 22px;
+    font-weight: bold; }
+  body a {
+    text-decoration: none; }
+  body a:hover {
+    text-decoration: underline; }
+  body a:link {
+    color: black; }
+  body a:visited {
+    color: black; }
+  body h1 {
+    font-size: 36px;
+    font-weight: bold; }
+  body h2 {
+    font-size: 22px;
+    font-weight: bold; }
+  body p {
     text-align: justify; }
-  body section code {
+  body code {
+    background-color: #ebebeb;
     font-family: Inconsolata; }
-  body section img {
+  body pre {
+    margin: 1em 0em 1em 0em;
+    padding: 0.5em 1em 0.5em 1em;
+    background-color: #ebebeb; }
+    body pre code {
+      color: black; }
+  body img {
     width: 32em; }
-  body section p.caption {
+  body p.caption {
     margin-top: 0.0em;
     text-align: center;
     color: rgba(0, 0, 0, 0.5); }
-  body section figure {
+  body figure {
     margin: 0px; }
-  body section span.MathJax_SVG svg {
+  body span.MathJax_SVG svg {
     color: black; }
+
+/*# sourceMappingURL=style.css.map */
