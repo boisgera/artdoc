@@ -1,18 +1,20 @@
 #!/usr/bin/env runhaskell
 
+import System.Directory
 import System.FilePath.Posix
 import Text.Pandoc
 import Text.Pandoc.JSON
 
+toSVGImage :: String -> IO String
+toSVGImage filename = do svgfilename <- return (replaceExtension filename ".svg")
+                         svgexists <- doesFileExist svgfilename
+                         return (if svgexists then svgfilename else filename)
 
--- TODO: check that the SVG file exists or don't change the extension.
-
-toSVGImage :: String -> String
-toSVGImage filename = replaceExtension filename ".svg"
-
-toSVG :: Inline -> Inline
-toSVG (Image inlines (target, title))  = Image inlines (toSVGImage(target), title)
-toSVG x = x
+toSVG :: Inline -> IO Inline
+toSVG (Image inlines (target, title)) = 
+    do new_target <- toSVGImage(target)
+       return (Image inlines (new_target, title))
+toSVG x = do return x
 
 main :: IO ()
 main = toJSONFilter toSVG
