@@ -8,6 +8,8 @@ import Text.JSON
 import Text.Pandoc
 import Text.Pandoc.JSON
 
+-- TODO: output type (writer name) for fields that contain some Pandoc content.
+
 toJSON :: MetaValue -> JSValue
 toJSON (MetaMap map) = JSObject (toJSObject (Prelude.map convert (toList map)))
   where convert (k, v) = (k, toJSON v)  
