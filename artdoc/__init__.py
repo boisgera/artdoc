@@ -43,9 +43,9 @@ def main():
 
     conf = json.load((DATA / "artdoc.js").open())
 
-    # TODO: manage local configuration.
-
-   
+    if Path("artdoc.js").exists():
+        user_conf = json.load(Path("artdoc.js").open())
+        conf.update(user_conf)
 
     info("Document:")
     doc_patterns = conf["doc"]
@@ -135,23 +135,26 @@ def main():
         subinfo(cmd, "> json")
         json_str = cmd()
 
-#        print("type:", type(json_str))
-#        print()
-#        print("json_str", json_str) # encoding issue here.
 
         info("Convert raw TeX to raw HTML")
         cmd = local[str(BIN / "rawHTML.hs")]
         subinfo(cmd, "< json > json")
         json_str = (cmd << json_str)()
 
-#        print("json_str", json_str)
+#        # not working yet
+#        info("Flag/Box Proofs")
+#        cmd = local[str(BIN / "proof.hs")]
+#        subinfo(cmd, "< json > json")
+#        json_str = (cmd << json_str)()
 
         info("Convert Images to SVG Images")
         cmd = local[str(BIN / "svg.hs")]
         subinfo(cmd, "< json > json")
         json_str = (cmd << json_str)()
 
-#        print("json_str", json_str)
+
+
+        ## TODO: section-tags and html5
 
         info("Generate HTML body")
         args = ["-f", "json", 
@@ -161,6 +164,7 @@ def main():
         subinfo(cmd, "< json > body")
         body = (cmd << json_str)()
 
+        # TODO: deal with a template that has no body instead ?
         html = (HTML / "index.html").open().read()
         html = lxml.html.document_fromstring(html)
         html_body = html.cssselect("body")[0]
@@ -183,44 +187,77 @@ def main():
         #
         #       - name (don't be more precise)
         #       - affiliation (concatenate)
-        #       - address
+        #       - address ???
         #       - email  --> Font Awesome Icon
         #       - url / uri ?
         #       - form of ID ? (like HAL ? or ZBlatt ?)
 
 
-        # TODO: get metadata as json structure.
 
-        metadata = get_metadata(str(doc))
+        # TODO: look at the rendering of
+        #       http://kieranhealy.org/blog/archives/2014/01/23/plain-text/:
+        #         - small grey date on top, bold title, bold author name,
+        #           italics affiliation, repeat.
 
-        author = metadata.get("author") or "Noman"
-        if isinstance(author, list):
-            author = author[0] # drop multiple authors for now
-        name = email = affiliation = None
-        if isinstance(author, basestring):
-            name = author
-        elif isinstance(author, dict):
-            name = author.get("name") or "Noman"
-            email = author.get("email")
-            affiliation = author.get("affiliation")
+     
+        metadata = get_metadata(str(doc)) # "--email-obfuscation=none" ?
 
-        E = lxml.html.builder
+        #print(metadata)
 
-        author_info = [name]
-        if email:
-          author_info.append(lxml.html.fromstring('<i class="fa fa-envelope"></i>)'))
+
+        # ----------------------------------------------------------------------
+        E = lxml.html.builder.E
+
+        def to_HTML(text):
+            if text is None:
+                return []
+            else:
+                fragment = lxml.html.fragment_fromstring(text, create_parent=True)
+                output = []
+                if fragment.text is not None:
+                    output.append(fragment.text)
+                output.extend(fragment)
+                return output 
+
+        items = []
+
+        date = to_HTML(metadata.get("date"))
+        if date is not None:
+            items.append(E.p({"class": "date"}, *date))
+
+        title = to_HTML(metadata.get("title"))
+        if title is not None:
+            items.append(E.h1({"class": "title"}, *title))
+
+        authors = metadata.get("author") or []
+
+        for author in authors:
+            if isinstance(author, basestring):
+                name = to_HTML(author)
+                email = None
+                affiliation = None
+            else:
+                name = to_HTML(author.get("name"))
+                email = to_HTML(author.get("email"))
+                affiliation = to_HTML(author.get("affiliation"))
+
+            if name is not None:
+                if email is not None:
+                    name = [E.a({"href": "mailto:" + email[0]}, *name)]
+                name = E.h2({"class": "author"}, *name)
+                items.append(name)
+                if affiliation is not None:
+                    affiliation = E.p({"class": "affiliation"}, *affiliation)
+                    items.append(affiliation)
         
-      
+        header = E.header({"class": "main"}, *items)
+ 
+        body = html.cssselect("body")[0]
+        body.insert(0, header)
 
-#        E = lxml.html.builder
-#        header = E.HEADER(
-#          E.H1(title),
-#          E.H2(author),
-#          E.H3(date),
-#        )
-# 
+        # ----------------------------------------------------------------------
 
-        #
+        
        
 
         html_str = lxml.html.tostring(html, encoding="utf-8", doctype="<!DOCTYPE html>")
