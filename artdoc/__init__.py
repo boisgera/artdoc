@@ -141,11 +141,11 @@ def main():
         subinfo(cmd, "< json > json")
         json_str = (cmd << json_str)()
 
-#        # not working yet
-#        info("Flag/Box Proofs")
-#        cmd = local[str(BIN / "proof.hs")]
-#        subinfo(cmd, "< json > json")
-#        json_str = (cmd << json_str)()
+        # not working yet
+        info("Flag/Box Proofs")
+        cmd = local[str(BIN / "proof.hs")]
+        subinfo(cmd, "< json > json")
+        json_str = (cmd << json_str)()
 
         info("Convert Images to SVG Images")
         cmd = local[str(BIN / "svg.hs")]
