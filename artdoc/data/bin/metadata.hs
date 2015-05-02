@@ -10,19 +10,21 @@ import Text.Pandoc.JSON
 
 -- TODO: output type (writer name) for fields that contain some Pandoc content.
 
-toJSON :: MetaValue -> JSValue
-toJSON (MetaMap map) = JSObject (toJSObject (Prelude.map convert (toList map)))
-  where convert (k, v) = (k, toJSON v)  
-toJSON (MetaList values) = JSArray (Prelude.map toJSON values)
-toJSON (MetaBool bool) = JSBool bool
-toJSON (MetaString string) = JSString (toJSString string)
-toJSON (MetaInlines inlines) = JSString (toJSString string)
-  where string = writeMarkdown def (wrapInlines inlines)
-toJSON (MetaBlocks blocks) = JSString (toJSString string)
-  where string = writeMarkdown def (wrapBlocks blocks)
+type StringWriter = WriterOptions -> Pandoc -> String
 
-jsConvert :: Pandoc -> JSValue
-jsConvert (Pandoc Meta{unMeta=meta} blocks) = toJSON (MetaMap meta) 
+toJSON :: MetaValue -> StringWriter -> JSValue
+toJSON (MetaMap map) writer = JSObject (toJSObject (Prelude.map convert (toList map)))
+  where convert (k, v) = (k, toJSON v writer)  
+toJSON (MetaList values) writer = JSArray (Prelude.map (\v -> toJSON v writer) values)
+toJSON (MetaBool bool) writer = JSBool bool
+toJSON (MetaString string) _ = JSString (toJSString string)
+toJSON (MetaInlines inlines) writer = JSString (toJSString string)
+  where string = writer def (wrapInlines inlines)
+toJSON (MetaBlocks blocks) writer = JSString (toJSString string)
+  where string = writer def (wrapBlocks blocks)
+
+jsConvert :: Pandoc -> StringWriter -> JSValue
+jsConvert (Pandoc Meta{unMeta=meta} blocks) writer = toJSON (MetaMap meta) writer 
 
 getFromMeta :: Pandoc -> String -> MetaValue
 getFromMeta (Pandoc meta blocks) key = fromJust (Data.Map.lookup key yaml)
@@ -41,5 +43,5 @@ main = do
     filename <- return (args !! 0)
     txt <- readFile filename
     doc <- return (readMarkdown def txt)
-    putStrLn (encode (jsConvert doc))
+    putStrLn (encode (jsConvert doc writeHtmlString))
 

@@ -159,7 +159,7 @@ def main():
         info("Generate HTML body")
         args = ["-f", "json", 
                 "--mathjax", 
-                "-t", "html"]
+                "-t", "html5", "--section-divs"]
         cmd = pandoc[args]
         subinfo(cmd, "< json > body")
         body = (cmd << json_str)()
@@ -174,6 +174,34 @@ def main():
         html_body.attrib.update(body.attrib)
         html_body.extend(body[:])
 
+
+        # ----------------------------------------------------------------------
+
+        E = lxml.html.builder.E
+        sections = html.cssselect("section")
+        for section in sections:
+            id_ = section.get("id")
+            heading = None
+            if len(section):
+                first = section[0]
+                if first.tag in "h1 h2 h3".split():
+                    heading = first
+            if id_ and heading is not None:
+                # Put the title into the link ? Would be more easy to clik, try it.
+                heading.set("class", (heading.get("class") or "") + "linked")
+                icon = E.i({"class": "fa fa-angle-right"})
+                link = E.a({"href": "#" + id_, 
+                            "style": "display:inline-block;float:left;position:relative;margin-left:-1em;vertical-align:bottom;"}, icon)
+                heading.insert(0, link)
+
+        # PBs:
+        #   - indent the link creates
+        #   - new to adapt the link size to the font-size of the next element
+        #     if any. This is bad, I can only do this at runtime ... OK, so I
+        #     should put the link into the heading (assuming that there is a
+        #     heading).
+
+        # ----------------------------------------------------------------------
 
 
         # TODO: deal with metadata & insert a document header with:

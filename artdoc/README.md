@@ -3,6 +3,8 @@ General Idea: handle LaTeX-heavy article-like markdown document to HTML conversi
 
   - deal with the analysis & use of metadata (ex: title, date, author, etc.)
 
+  - find a way to deal with $\hfill$ (before the tombstone).
+
   - deployment scheme for the package ?
 
   - manage citations
