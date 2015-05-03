@@ -169,6 +169,8 @@ def main():
         html = lxml.html.document_fromstring(html)
         html_body = html.cssselect("body")[0]
 
+        if not body.strip():
+            body = "<body></body>"
         body = lxml.html.document_fromstring(body).cssselect("body")[0]
 
         html_body.attrib.update(body.attrib)
