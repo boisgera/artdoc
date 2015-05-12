@@ -15,6 +15,10 @@ from pathlib import Path
 from plumbum import local
 from plumbum.cmd import mkdir, rm, pandoc, scss
 
+
+# TODO: need the plumbum ProcessExecutionError to fail HARD, and give me
+#       proper detailled error messages.
+
 def info(*args, **kwargs):
     tab = kwargs.get("tab", 0)
     indent = tab * 2 * " "
@@ -145,7 +149,10 @@ def main():
         info("Flag/Box Proofs")
         cmd = local[str(BIN / "proof.hs")]
         subinfo(cmd, "< json > json")
-        json_str = (cmd << json_str)()
+        try:
+            json_str = (cmd << json_str)()
+        except Exception as error:
+            print(repr(error))
 
         info("Convert Images to SVG Images")
         cmd = local[str(BIN / "svg.hs")]
@@ -258,6 +265,7 @@ def main():
         title = to_HTML(metadata.get("title"))
         if title is not None:
             items.append(E.h1({"class": "title"}, *title))
+            html.cssselect("head")[0].insert(0, E.title(*title))
 
         authors = metadata.get("author") or []
 
