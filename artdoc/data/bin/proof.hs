@@ -18,6 +18,7 @@ end (Para []) = False
 end (Para inlines) = case last inlines of
     Math InlineMath "\\blacksquare" -> True
     _ -> False
+end _ = False
 
 split :: [a] -> (a -> Bool) -> ([a], [a])
 split [] p = ([], [])

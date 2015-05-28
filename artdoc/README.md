@@ -1,6 +1,14 @@
 
 General Idea: handle LaTeX-heavy article-like markdown document to HTML conversion.
 
+  - code blocks that insert "..." when too wide & expand or pop out when hovered 
+    or clicked.
+
+  - biblio: make good use of urls in the bib (does it work now ?), make
+    sure that reference to the bibitems actually redirect to the bib items.
+
+  - css hyphens.
+
   - deal with the analysis & use of metadata (ex: title, date, author, etc.)
 
   - find a way to deal with $\hfill$ (before the tombstone).

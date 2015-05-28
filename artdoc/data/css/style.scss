@@ -1,12 +1,14 @@
 
 body {
-
     max-width: 32em;
     margin: auto;
     font-family: Alegreya;
     font-size: 22px;
+    text-align: justify;
+    hyphens: auto;
+    -moz-hyphens: auto;
 
-    header {
+    header.main {
       h1 {
         font-size: 48px;
         font-weight: bold;
@@ -45,7 +47,7 @@ body {
     }
 
     *.linked {
-      a {
+      i {
         opacity: 0;
         transition: {
           property: opacity;
@@ -54,8 +56,9 @@ body {
           timing-function: ease;
         }
       }
-      &:hover {
-        a {
+      a:hover {
+        text-decoration: none;
+        i {
           opacity: 1;
           transition: {
             property: opacity;
@@ -73,12 +76,26 @@ body {
     }
 
     h2 {
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    h3 {
       font-size: 22px;
       font-weight: bold;
     }
 
-    p {
-      text-align: justify;
+    h4 {
+      font-size: 22px;
+      font-weight: bold;
+      float: left;
+      margin-right: 1em;
+      margin-top: 0px;
+      margin-bottom: 0px;
+
+      &::after {
+        content: ".";
+      }
     }
 
     code {
@@ -92,6 +109,23 @@ body {
       background-color: rgb(235,235,235);
       code {
         color: black;
+      }
+    }
+
+    blockquote {
+      background: #f9f9f9;
+      border-left: 5px solid #ccc;
+      margin: 1em 2em;
+      padding: 0.5em 1em;
+
+    }
+
+    blockquote p {
+      &:first-child {
+        margin-top: 0em;
+      }
+      &:last-child {
+        margin-bottom: 0em;
       }
     }
 

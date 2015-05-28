@@ -174,6 +174,7 @@ def main():
         # TODO: deal with a template that has no body instead ?
         html = (HTML / "index.html").open().read()
         html = lxml.html.document_fromstring(html)
+        html_body = html.cssselect("html")[0].set("lang", "en") # needed for hyphens.
         html_body = html.cssselect("body")[0]
 
         if not body.strip():
@@ -197,11 +198,21 @@ def main():
                     heading = first
             if id_ and heading is not None:
                 # Put the title into the link ? Would be more easy to clik, try it.
+                c = """
                 heading.set("class", (heading.get("class") or "") + "linked")
                 icon = E.i({"class": "fa fa-angle-right"})
                 link = E.a({"href": "#" + id_, 
                             "style": "display:inline-block;float:left;position:relative;margin-left:-1em;vertical-align:bottom;"}, icon)
                 heading.insert(0, link)
+                """
+                heading.set("class", (heading.get("class") or "") + "linked")
+                icon = E.i({"class": "fa fa-angle-right", "style": "width: 1em;"})
+                in_link =  [icon] + [heading.text] + heading[:] + [{"href": "#" + id_}] 
+                link = E.a({"style": "margin-left:-1em"}, *in_link)
+                heading.text = ""
+                heading.insert(0, link)
+
+
 
         # PBs:
         #   - indent the link creates

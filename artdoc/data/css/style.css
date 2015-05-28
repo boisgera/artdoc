@@ -3,18 +3,21 @@ body {
   margin: auto;
   font-family: Alegreya;
   font-size: 22px;
+  text-align: justify;
+  hyphens: auto;
+  -moz-hyphens: auto;
   /*
   .date {
     color: #bbbbbb;
   }
   */ }
-  body header h1 {
+  body header.main h1 {
     font-size: 48px;
     font-weight: bold; }
-  body header h2 {
+  body header.main h2 {
     font-size: 36px;
     font-weight: bold; }
-  body header h3 {
+  body header.main h3 {
     font-size: 22px;
     font-weight: bold; }
   body a {
@@ -28,26 +31,38 @@ body {
   body h1.title {
     font-size: 48px;
     font-weight: bold; }
-  body *.linked a {
+  body *.linked i {
     opacity: 0;
     transition-property: opacity;
     transition-delay: 1s;
     transition-duration: 2s;
     transition-timing-function: ease; }
-  body *.linked:hover a {
-    opacity: 1;
-    transition-property: opacity;
-    transition-delay: 0s;
-    transition-duration: 0.25s;
-    transition-timing-function: ease; }
+  body *.linked a:hover {
+    text-decoration: none; }
+    body *.linked a:hover i {
+      opacity: 1;
+      transition-property: opacity;
+      transition-delay: 0s;
+      transition-duration: 0.25s;
+      transition-timing-function: ease; }
   body h1 {
     font-size: 36px;
     font-weight: bold; }
   body h2 {
+    font-size: 28px;
+    font-weight: bold; }
+  body h3 {
     font-size: 22px;
     font-weight: bold; }
-  body p {
-    text-align: justify; }
+  body h4 {
+    font-size: 22px;
+    font-weight: bold;
+    float: left;
+    margin-right: 1em;
+    margin-top: 0px;
+    margin-bottom: 0px; }
+    body h4::after {
+      content: "."; }
   body code {
     background-color: #ebebeb;
     font-family: Inconsolata; }
@@ -57,6 +72,15 @@ body {
     background-color: #ebebeb; }
     body pre code {
       color: black; }
+  body blockquote {
+    background: #f9f9f9;
+    border-left: 5px solid #ccc;
+    margin: 1em 2em;
+    padding: 0.5em 1em; }
+  body blockquote p:first-child {
+    margin-top: 0em; }
+  body blockquote p:last-child {
+    margin-bottom: 0em; }
   body img {
     width: 32em; }
   body figcaption {
