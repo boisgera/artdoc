@@ -194,22 +194,20 @@ def main():
             heading = None
             if len(section):
                 first = section[0]
-                if first.tag in "h1 h2 h3".split():
+                if first.tag in "h1 h2 h3 h4 h5 h6".split():
                     heading = first
             if id_ and heading is not None:
-                # Put the title into the link ? Would be more easy to clik, try it.
-                c = """
-                heading.set("class", (heading.get("class") or "") + "linked")
-                icon = E.i({"class": "fa fa-angle-right"})
-                link = E.a({"href": "#" + id_, 
-                            "style": "display:inline-block;float:left;position:relative;margin-left:-1em;vertical-align:bottom;"}, icon)
-                heading.insert(0, link)
-                """
-                heading.set("class", (heading.get("class") or "") + "linked")
-                icon = E.i({"class": "fa fa-angle-right", "style": "width: 1em;"})
-                in_link =  [icon] + [heading.text] + heading[:] + [{"href": "#" + id_}] 
-                link = E.a({"style": "margin-left:-1em"}, *in_link)
-                heading.text = ""
+                # deprecated
+                #heading.set("class", (heading.get("class") or "") + "linked")
+                #icon = E.i({"class": "fa fa-angle-right", "style": "width: 1em;"})
+                #in_link =  [icon] + [heading.text] + heading[:] + [{"href": "#" + id_}] 
+                #link = E.a({"style": "margin-left:-1em"}, *in_link)
+                #heading.text = ""
+                #heading.insert(0, link)
+                contents = [heading.text] + heading[:]
+                heading.text, heading[:] = None, []
+                href = {"href": "#" + id_}
+                link = E.a(href, *contents)
                 heading.insert(0, link)
 
 

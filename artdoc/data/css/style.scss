@@ -31,6 +31,12 @@ body {
       text-decoration: underline;
     }
 
+    h1, h2, h3, h4, h5, h6 {
+      a:hover {
+        text-decoration: none;
+      }
+    }
+
     a:link { color: black; }
 
     a:visited { color: black; }
@@ -85,7 +91,7 @@ body {
       font-weight: bold;
     }
 
-    h4 {
+    h4, h5, h6 {
       font-size: 22px;
       font-weight: bold;
       float: left;
@@ -99,7 +105,7 @@ body {
     }
 
     code {
-      background-color: rgb(235,235,235);
+      /* background-color: rgb(235,235,235); */
       font-family: Inconsolata;
     }
 

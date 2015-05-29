@@ -24,6 +24,8 @@ body {
     text-decoration: none; }
   body a:hover {
     text-decoration: underline; }
+  body h1 a:hover, body h2 a:hover, body h3 a:hover, body h4 a:hover, body h5 a:hover, body h6 a:hover {
+    text-decoration: none; }
   body a:link {
     color: black; }
   body a:visited {
@@ -54,17 +56,17 @@ body {
   body h3 {
     font-size: 22px;
     font-weight: bold; }
-  body h4 {
+  body h4, body h5, body h6 {
     font-size: 22px;
     font-weight: bold;
     float: left;
     margin-right: 1em;
     margin-top: 0px;
     margin-bottom: 0px; }
-    body h4::after {
+    body h4::after, body h5::after, body h6::after {
       content: "."; }
   body code {
-    background-color: #ebebeb;
+    /* background-color: rgb(235,235,235); */
     font-family: Inconsolata; }
   body pre {
     margin: 1em 0em 1em 0em;

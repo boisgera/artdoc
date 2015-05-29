@@ -1,6 +1,8 @@
 
 General Idea: handle LaTeX-heavy article-like markdown document to HTML conversion.
 
+  - "lightbox"-style pop out for figures.
+
   - code blocks that insert "..." when too wide & expand or pop out when hovered 
     or clicked.
 
