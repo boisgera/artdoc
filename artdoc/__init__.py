@@ -132,8 +132,16 @@ def get_metadata(filename):
 
 # TODO: same pattern everywhere, change this: don't require the parent,
 #       return the result as a list, let the caller do the integration.
-def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"):
-    return [HTML.script(src=url)]
+def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js",
+           standalone=False):
+    if standalone:
+        path = ARTDOC / "js" / "jquery.js"
+        file = path.open("wb")
+        file.write(urllib.urlopen(url).read())
+        file.close()
+        return [HTML.script(src=str(path))]
+    else:
+        return [HTML.script(src=url)]
 
 # TODO: resolve ARTDOC wrt WORKDIR, then use this instead of the hardcoded paths.
 def artdoc():
@@ -310,7 +318,7 @@ def main():
 
         # ----------------------------------------------------------------------
         info("Add JQuery")
-        head.extend(jquery())
+        head.extend(jquery(standalone=standalone))
 
         # ----------------------------------------------------------------------
         info("Add Google Fonts support")
