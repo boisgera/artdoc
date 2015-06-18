@@ -1,7 +1,11 @@
 
 General Idea: handle LaTeX-heavy article-like markdown document to HTML conversion.
 
-  - "lightbox"-style pop out for figures.
+  - need to deal with two image size policy: either "fit width", or use the same
+    scale than for the LaTeX document (ex: when TeX fonts are embedded).
+    Needs to be done for pdf, svg, png, etc.
+
+  - "lightbox"-style pop out for figures, or more generally, "blocks" ?.
 
   - code blocks that insert "..." when too wide & expand or pop out when hovered 
     or clicked.
