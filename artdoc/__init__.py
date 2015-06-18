@@ -1,7 +1,10 @@
 # coding: utf-8
 
-# Python 2.7 Standard Library
+# Future 
 from __future__ import print_function
+
+# Python 2.7 Standard Library
+import argparse
 import atexit
 import json
 import pkg_resources
@@ -44,6 +47,13 @@ def get_metadata(filename):
     return json.loads(cmd(filename))
 
 def main():
+
+    # TODO: combine command-line and option file.
+    # TODO: option to generate a default configuration file
+    parser = argparse.ArgumentParser() # TODO: doc
+    parser.add_argument("-s", "--standalone", action="store_true") # TODO: doc
+    args = parse.parse_args()
+    standalone = args.standalone
 
     conf = json.load((DATA / "artdoc.js").open())
 
