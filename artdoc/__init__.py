@@ -69,7 +69,9 @@ def google_fonts(font_names, standalone=False):
     info = json.loads(urllib.urlopen(url + "?key=" + GOOGLE_API_KEY).read())
     if standalone:
         css = ""
-        css_template = """@font-face {{
+        css_template = \
+"""
+@font-face {{
   font-family: {name!r};
   font-style: {style};
   font-weight: {weight}; 
@@ -140,10 +142,21 @@ def artdoc():
       HTML.script(src=".artdoc/js/main.js")
     ]
 
-def mathjax(url="http://cdn.mathjax.org/mathjax/latest/MathJax.js", 
+def mathjax(url="http://cdn.mathjax.org/mathjax/latest/MathJax.js",
+            zip_url="https://github.com/mathjax/MathJax/archive/master.zip", 
             config="TeX-AMS_HTML", 
             extra={"HTML-CSS": {"scale": 90},
-                   "TeX": {"equationNumbers": {"autoNumber": "AMS"}}}):
+                   "TeX": {"equationNumbers": {"autoNumber": "AMS"}}},
+            standalone=False):
+    if standalone:
+        zip_file = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+        zip_file.write(urllib.urlopen(zip_url).read())
+        zip_filename = zip_file.name
+        zip_file.close()
+        zipfile.ZipFile(zip_filename).extractall(str(ARTDOC)) 
+        os.remove(zip_filename)
+        url = str(ARTDOC / "MathJax-master" / "MathJax.js")
+
     if config:
         url = url + "?config=" + config
     if extra is not None:
@@ -305,7 +318,7 @@ def main():
 
         # ----------------------------------------------------------------------
         info("Add Mathjax support")
-        head.extend(mathjax())
+        head.extend(mathjax(standalone=standalone))
 
         # ----------------------------------------------------------------------
         info("Add Font Awesome support")
