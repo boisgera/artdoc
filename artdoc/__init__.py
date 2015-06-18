@@ -8,6 +8,7 @@ import argparse
 import atexit
 import json
 import pkg_resources
+import re
 import shutil
 import sys
 import urllib
@@ -19,6 +20,17 @@ from pathlib import Path
 from plumbum import local
 from plumbum.cmd import mkdir, rm, pandoc, scss
 
+
+
+WORKDIR = Path(".")
+ARTDOC = WORKDIR / ".artdoc"
+if ARTDOC.exists():
+    shutil.rmtree(str(ARTDOC))
+DATA  = Path(pkg_resources.resource_filename(__name__, "data"))
+atexit.register(pkg_resources.cleanup_resources)
+
+CSS  = DATA / "css"
+BIN  = DATA / "bin"
 
 # TODO: need the plumbum ProcessExecutionError to fail HARD, 
 #       and give me proper detailled error messages.
@@ -42,32 +54,59 @@ def parse_html(text=None):
 # Google Web Fonts
 # ------------------------------------------------------------------------------
 
-GOOGLE_API_KEY = "AIzaSyCXe6WAu7i4CYL9ee-RFNZirObwT4zJyqI"
+# TODO: manage standalone mode: get the file infos, identify/name/insert in data 
+#       the font files, create the css file,insert in artdoc data, update head
+#       fragment.
 
-def google_fonts(*font_names):
+# TODO: manage font not found in the list
+
+def google_fonts(font_names, standalone=False):
+    GOOGLE_API_KEY = "AIzaSyCXe6WAu7i4CYL9ee-RFNZirObwT4zJyqI"
     url = "https://www.googleapis.com/webfonts/v1/webfonts"
     info = json.loads(urllib.urlopen(url + "?key=" + GOOGLE_API_KEY).read())
-    families = []
-    for font_name in font_names:
-        for font_info in info["items"]:
-            if font_info["family"] == font_name:
-                family = font_name.replace(" ", "+") + ":"
-                variants = font_info["variants"]
-                for i, v in enumerate(variants):
-                    if v == "regular":
-                        variants[i] = "400"
-                    elif v == "italic":
-                        variants[i] = "400italic"
-                family += ",".join(variants)
-                families.append(family)
-                break
-    family = "|".join(families) + "&subset=latin,latin-ext" 
-    # shit, "&" and "|" are escaped ! "&" in every attribute, "|" only in
-    # hrefs AFAICT. This is a somehow documented "bug" (see <https://github.com/peterbe/premailer/issues/72> for example.
-    url = "http://fonts.googleapis.com/css?family=" + family
-    return [HTML.link(rel="stylesheet", href=url)]
-
-
+    if standalone:
+        css = ""
+        css_template = """@font-face {{
+  font-family: {name!r};
+  font-style: {style};
+  font-weight: {weight}; 
+  src: url({file!r});
+ }}
+"""
+        for font_name in font_names:
+            for font_info in info["items"]:
+                if font_info["family"] == font_name:
+                    variants = font_info["variants"]
+                    files = font_info["files"]
+                    for variant in variants:
+                        subinfo("downloading {0}".format(font_name + " " + variant))
+                        ttf_bytes = urllib.urlopen(files[variant]).read()
+                        ttf_path = Path("fonts") / (font_name + " " + variant + ".ttf")
+                        ttf_file = (ARTDOC / ttf_path).open("wb")
+                        ttf_file.write(ttf_bytes)
+                        ttf_file.close()
+                        style = "normal" if "italic" not in variant else "italic"
+                        weight = re.match("[0-9]*", variant).group() or "400"
+                        css += css_template.format(name=font_name,  
+                                                   style=style,
+                                                   weight=weight,
+                                                   file=str(Path("..") / ttf_path))
+                    break
+        (ARTDOC / "css" / "fonts.css").open("wb").write(css)
+        return [HTML.link(rel="stylesheet", href=".artdoc/css/fonts.css")]
+    else:
+        families = []
+        for font_name in font_names:
+            for font_info in info["items"]:
+                if font_info["family"] == font_name:
+                    family = font_name.replace(" ", "+") + ":"
+                    variants = font_info["variants"]
+                    family += ",".join(variants)
+                    families.append(family)
+                    break
+        family = "|".join(families) + "&subset=latin,latin-ext"
+        url = "http://fonts.googleapis.com/css?family=" + family
+        return [HTML.link(rel="stylesheet", href=url)]
 
 # ------------------------------------------------------------------------------
 # TODO: use logfile instead (somehow).
@@ -81,15 +120,6 @@ subinfo = lambda *args: info(*args, tab=1)
 subsubinfo = lambda *args: info(*args, tab=2)
 # ------------------------------------------------------------------------------
 
-WORKDIR = Path(".")
-ARTDOC = WORKDIR / ".artdoc"
-if ARTDOC.exists():
-    shutil.rmtree(str(ARTDOC))
-DATA  = Path(pkg_resources.resource_filename(__name__, "data"))
-atexit.register(pkg_resources.cleanup_resources)
-
-CSS  = DATA / "css"
-BIN  = DATA / "bin"
 
 def get_metadata(filename):
     cmd = local[str(BIN / "metadata.hs")]
@@ -100,6 +130,7 @@ def get_metadata(filename):
 def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"):
     return [HTML.script(src=url)]
 
+# TODO: resolve ARTDOC wrt WORKDIR, then use this instead of the hardcoded paths.
 def artdoc():
     return [
       HTML.link(rel="stylesheet", href=".artdoc/css/style.css"),
@@ -255,7 +286,7 @@ def main():
 
         # ----------------------------------------------------------------------
         info("Add Google Fonts support")
-        head.extend(google_fonts("Alegreya", "Alegreya SC"))
+        head.extend(google_fonts(["Alegreya", "Alegreya SC"], standalone=standalone))
 
         # ----------------------------------------------------------------------
         info("Add Mathjax support")
