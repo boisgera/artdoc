@@ -10,6 +10,7 @@ import json
 import pkg_resources
 import shutil
 import sys
+import urllib
 
 # Third-Party Libraries
 import lxml.html
@@ -22,6 +23,9 @@ from plumbum.cmd import mkdir, rm, pandoc, scss
 # TODO: need the plumbum ProcessExecutionError to fail HARD, 
 #       and give me proper detailled error messages.
 
+# HTML Helpers
+# ------------------------------------------------------------------------------
+
 def parse_html(text=None):
     "Return the fragment contents as a list of text and element nodes"
     if text is None:
@@ -33,6 +37,35 @@ def parse_html(text=None):
             output.append(fragment.text)
         output.extend(fragment)
         return output 
+
+
+# Google Web Fonts
+# ------------------------------------------------------------------------------
+
+GOOGLE_API_KEY = "AIzaSyCXe6WAu7i4CYL9ee-RFNZirObwT4zJyqI"
+
+def google_fonts(*font_names):
+    url = "https://www.googleapis.com/webfonts/v1/webfonts"
+    info = json.loads(urllib.urlopen(url + "?key=" + GOOGLE_API_KEY).read())
+    families = []
+    for font_name in font_names:
+        for font_info in info["items"]:
+            if font_info["family"] == font_name:
+                family = font_name.replace(" ", "+") + ":"
+                variants = font_info["variants"]
+                for i, v in enumerate(variants):
+                    if v == "regular":
+                        variants[i] = "400"
+                    elif v == "italic":
+                        variants[i] = "400italic"
+                family += ",".join(variants)
+                families.append(family)
+                break
+    family = "|".join(families) + "&subset=latin,latin-ext" 
+    # shit, "&" and "|" are escaped ! "&" in every attribute, "|" only in
+    # hrefs AFAICT. This is a somehow documented "bug" (see <https://github.com/peterbe/premailer/issues/72> for example.
+    url = "http://fonts.googleapis.com/css?family=" + family
+    return [HTML.link(rel="stylesheet", href=url)]
 
 
 
@@ -49,7 +82,7 @@ subsubinfo = lambda *args: info(*args, tab=2)
 # ------------------------------------------------------------------------------
 
 WORKDIR = Path(".")
-ARTDOC = WORKDIR / "artdoc"
+ARTDOC = WORKDIR / ".artdoc"
 if ARTDOC.exists():
     shutil.rmtree(str(ARTDOC))
 DATA  = Path(pkg_resources.resource_filename(__name__, "data"))
@@ -64,45 +97,30 @@ def get_metadata(filename):
 
 # TODO: same pattern everywhere, change this: don't require the parent,
 #       return the result as a list, let the caller do the integration.
-def add_jquery(root):
-    url = "https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"
-    script = HTML.script(src=url)
-    root.append(script)
+def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"):
+    return [HTML.script(src=url)]
 
-def add_artdoc(root):
-    contents = parse_html("""
-      <link rel="stylesheet" type="text/css" href="artdoc/css/style.css">
-      <script src="artdoc/js/main.js"></script>
-    """)
-    root.extend(contents)
+def artdoc():
+    return [
+      HTML.link(rel="stylesheet", href=".artdoc/css/style.css"),
+      HTML.script(src=".artdoc/js/main.js")
+    ]
 
-def add_google_fonts(root):
-    links = parse_html("""    
-      <link 
-        href='http://fonts.googleapis.com/css?family=Inconsolata:400,700&subset=latin,latin-ext'
-        rel='stylesheet'>
-      <link href='http://fonts.googleapis.com/css?family=Alegreya:400,400italic,700,700italic,900,900italic|Alegreya+SC:400,400italic,700,700italic,900,900italic&subset=latin,latin-ext' 
-      rel='stylesheet'>
-    """)
-    root.extend(links)
+def mathjax(url="http://cdn.mathjax.org/mathjax/latest/MathJax.js", 
+            config="TeX-AMS_HTML", 
+            extra={"HTML-CSS": {"scale": 90},
+                   "TeX": {"equationNumbers": {"autoNumber": "AMS"}}}):
+    if config:
+        url = url + "?config=" + config
+    if extra is not None:
+        js = "MathJax.Hub.Config({0})".format(json.dumps(extra))
+    else:
+        js = ""
+    return [HTML.script(dict(src=url), js)] 
 
-def add_mathjax(root):
-    script = parse_html("""
-      <script 
-        type="text/javascript"
-        src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-        MathJax.Hub.Config({
-          "HTML-CSS": {scale: 90},
-          "TeX": {equationNumbers: {autoNumber: "AMS"}}
-        });
-      </script>""")
-    root.extend(script)
+def font_awesome(url="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"): 
+    return [HTML.link(rel="stylesheet", href=url)]
 
-def add_font_awesome(root):
-    url = "http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"
-    link = HTML.link(rel="stylesheet", href=url)
-    root.append(link)
-    
 def main():
     # TODO: combine command-line and option file.
     # TODO: option to generate a default configuration file
@@ -233,23 +251,23 @@ def main():
 
         # ----------------------------------------------------------------------
         info("Add JQuery")
-        add_jquery(head)
+        head.extend(jquery())
 
         # ----------------------------------------------------------------------
         info("Add Google Fonts support")
-        add_google_fonts(head)
+        head.extend(google_fonts("Alegreya", "Alegreya SC"))
 
         # ----------------------------------------------------------------------
         info("Add Mathjax support")
-        add_mathjax(head)
+        head.extend(mathjax())
 
         # ----------------------------------------------------------------------
         info("Add Font Awesome support")
-        add_font_awesome(head)
+        head.extend(font_awesome())
 
         # ----------------------------------------------------------------------
         info("Add artdoc css & js files")
-        add_artdoc(head)
+        head.extend(artdoc())
 
         # ----------------------------------------------------------------------
         info("Setting language to english (required for hyphens)")
