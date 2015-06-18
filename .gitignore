@@ -1,0 +1,17 @@
+
+# directories
+build
+dist
+sandbox
+tmp
+
+# hidden files
+.*
+!.gitignore
+
+# generated files
+*.egg-info
+*.o
+*.hi
+*.map
+*~
