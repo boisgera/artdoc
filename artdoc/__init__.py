@@ -13,15 +13,31 @@ import sys
 
 # Third-Party Libraries
 import lxml.html
-import lxml.html.builder
+from lxml.html.builder import E as HTML
 from pathlib import Path
 from plumbum import local
 from plumbum.cmd import mkdir, rm, pandoc, scss
 
 
-# TODO: need the plumbum ProcessExecutionError to fail HARD, and give me
-#       proper detailled error messages.
+# TODO: need the plumbum ProcessExecutionError to fail HARD, 
+#       and give me proper detailled error messages.
 
+def parse_html(text=None):
+    "Return the fragment contents as a list of text and element nodes"
+    if text is None:
+        return []
+    else:
+        fragment = lxml.html.fragment_fromstring(text, create_parent=True)
+        output = []
+        if fragment.text is not None:
+            output.append(fragment.text)
+        output.extend(fragment)
+        return output 
+
+
+
+# ------------------------------------------------------------------------------
+# TODO: use logfile instead (somehow).
 def info(*args, **kwargs):
     tab = kwargs.get("tab", 0)
     indent = tab * 2 * " "
@@ -30,6 +46,7 @@ def info(*args, **kwargs):
 
 subinfo = lambda *args: info(*args, tab=1)
 subsubinfo = lambda *args: info(*args, tab=2)
+# ------------------------------------------------------------------------------
 
 WORKDIR = Path(".")
 ARTDOC = WORKDIR / "artdoc"
@@ -38,7 +55,6 @@ if ARTDOC.exists():
 DATA  = Path(pkg_resources.resource_filename(__name__, "data"))
 atexit.register(pkg_resources.cleanup_resources)
 
-HTML = DATA / "html"
 CSS  = DATA / "css"
 BIN  = DATA / "bin"
 
@@ -46,13 +62,53 @@ def get_metadata(filename):
     cmd = local[str(BIN / "metadata.hs")]
     return json.loads(cmd(filename))
 
-def main():
+# TODO: same pattern everywhere, change this: don't require the parent,
+#       return the result as a list, let the caller do the integration.
+def add_jquery(root):
+    url = "https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"
+    script = HTML.script(src=url)
+    root.append(script)
 
+def add_artdoc(root):
+    contents = parse_html("""
+      <link rel="stylesheet" type="text/css" href="artdoc/css/style.css">
+      <script src="artdoc/js/main.js"></script>
+    """)
+    root.extend(contents)
+
+def add_google_fonts(root):
+    links = parse_html("""    
+      <link 
+        href='http://fonts.googleapis.com/css?family=Inconsolata:400,700&subset=latin,latin-ext'
+        rel='stylesheet'>
+      <link href='http://fonts.googleapis.com/css?family=Alegreya:400,400italic,700,700italic,900,900italic|Alegreya+SC:400,400italic,700,700italic,900,900italic&subset=latin,latin-ext' 
+      rel='stylesheet'>
+    """)
+    root.extend(links)
+
+def add_mathjax(root):
+    script = parse_html("""
+      <script 
+        type="text/javascript"
+        src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+        MathJax.Hub.Config({
+          "HTML-CSS": {scale: 90},
+          "TeX": {equationNumbers: {autoNumber: "AMS"}}
+        });
+      </script>""")
+    root.extend(script)
+
+def add_font_awesome(root):
+    url = "http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"
+    link = HTML.link(rel="stylesheet", href=url)
+    root.append(link)
+    
+def main():
     # TODO: combine command-line and option file.
     # TODO: option to generate a default configuration file
     parser = argparse.ArgumentParser() # TODO: doc
     parser.add_argument("-s", "--standalone", action="store_true") # TODO: doc
-    args = parse.parse_args()
+    args = parser.parse_args()
     standalone = args.standalone
 
     conf = json.load((DATA / "artdoc.js").open())
@@ -75,10 +131,10 @@ def main():
     if not docs:
         sys.exit("error: no document found")
 
-    info("HTML template:")
-    template_file = HTML / "index.html"
-    subinfo(str(template_file))
-    template = template_file.open().read().encode("utf-8")
+#    info("HTML template:")
+#    template_file = HTML / "index.html"
+#    subinfo(str(template_file))
+#    template = template_file.open().read().encode("utf-8")
 
     info("Bibliography:")
     bib_patterns = conf["bib"]
@@ -124,16 +180,6 @@ def main():
             new_csss.append(css)
     csss = new_csss
 
-    
-    # TODO: iterate on the documents, generate the json file, filter it,
-    #       generate the html file(s), all that in dist directory.
-    #       Also need to: tweak the index template head & stuff to include
-    #       the css & co that has been found, AND, we need to ship the resources ?
-    #       Arf, that sucks, we'd better generate the HTML in workdir, so that
-    #       we don't have to move the resources, just to somehow add the
-    #       package data resource ('artdoc' package ?).
-
-
     # TODO: copy only what is required.
     shutil.copytree(str(DATA), str(ARTDOC))
 
@@ -149,13 +195,11 @@ def main():
         subinfo(cmd, "> json")
         json_str = cmd()
 
-
         info("Convert raw TeX to raw HTML")
         cmd = local[str(BIN / "rawHTML.hs")]
         subinfo(cmd, "< json > json")
         json_str = (cmd << json_str)()
 
-        # not working yet
         info("Flag/Box Proofs")
         cmd = local[str(BIN / "proof.hs")]
         subinfo(cmd, "< json > json")
@@ -169,35 +213,50 @@ def main():
         subinfo(cmd, "< json > json")
         json_str = (cmd << json_str)()
 
-
-
-        ## TODO: section-tags and html5
-
-        info("Generate HTML body")
+        info("Generate HTML body from markdown")
         args = ["-f", "json", 
                 "--mathjax", 
                 "-t", "html5", "--section-divs"]
         cmd = pandoc[args]
         subinfo(cmd, "< json > body")
-        body = (cmd << json_str)()
+        pandoc_body_str = (cmd << json_str)()
+        pandoc_html = lxml.html.document_fromstring(pandoc_body_str)
+        pandoc_body = pandoc_html.cssselect("body")[0]
 
-        # TODO: deal with a template that has no body instead ?
-        html = (HTML / "index.html").open().read()
-        html = lxml.html.document_fromstring(html)
-        html_body = html.cssselect("html")[0].set("lang", "en") # needed for hyphens.
-        html_body = html.cssselect("body")[0]
-
-        if not body.strip():
-            body = "<body></body>"
-        body = lxml.html.document_fromstring(body).cssselect("body")[0]
-
-        html_body.attrib.update(body.attrib)
-        html_body.extend(body[:])
-
+        info("Generate standalone HTML doc")
+        html = HTML.html(HTML.head, HTML.body)
+        body = html.cssselect("body")[0]
+        head = html.cssselect("head")[0]
+        head.append(HTML.meta(charset="utf-8"))
+        body.attrib.update(pandoc_body.attrib)
+        body.extend(pandoc_body[:])
 
         # ----------------------------------------------------------------------
+        info("Add JQuery")
+        add_jquery(head)
 
-        E = lxml.html.builder.E
+        # ----------------------------------------------------------------------
+        info("Add Google Fonts support")
+        add_google_fonts(head)
+
+        # ----------------------------------------------------------------------
+        info("Add Mathjax support")
+        add_mathjax(head)
+
+        # ----------------------------------------------------------------------
+        info("Add Font Awesome support")
+        add_font_awesome(head)
+
+        # ----------------------------------------------------------------------
+        info("Add artdoc css & js files")
+        add_artdoc(head)
+
+        # ----------------------------------------------------------------------
+        info("Setting language to english (required for hyphens)")
+        html.set("lang", "en") 
+
+        # ----------------------------------------------------------------------
+        info("Turning headers into self-links")
         sections = html.cssselect("section")
         for section in sections:
             id_ = section.get("id")
@@ -207,27 +266,11 @@ def main():
                 if first.tag in "h1 h2 h3 h4 h5 h6".split():
                     heading = first
             if id_ and heading is not None:
-                # deprecated
-                #heading.set("class", (heading.get("class") or "") + "linked")
-                #icon = E.i({"class": "fa fa-angle-right", "style": "width: 1em;"})
-                #in_link =  [icon] + [heading.text] + heading[:] + [{"href": "#" + id_}] 
-                #link = E.a({"style": "margin-left:-1em"}, *in_link)
-                #heading.text = ""
-                #heading.insert(0, link)
-                contents = [heading.text] + heading[:]
+                contents = [heading.text or ""] + heading[:]
                 heading.text, heading[:] = None, []
                 href = {"href": "#" + id_}
-                link = E.a(href, *contents)
+                link = HTML.a(href, *contents)
                 heading.insert(0, link)
-
-
-
-        # PBs:
-        #   - indent the link creates
-        #   - new to adapt the link size to the font-size of the next element
-        #     if any. This is bad, I can only do this at runtime ... OK, so I
-        #     should put the link into the heading (assuming that there is a
-        #     heading).
 
         # ----------------------------------------------------------------------
 
@@ -255,76 +298,48 @@ def main():
         #         - small grey date on top, bold title, bold author name,
         #           italics affiliation, repeat.
 
-     
-        metadata = get_metadata(str(doc)) # "--email-obfuscation=none" ?
 
-        #print(metadata)
-
-
-        # ----------------------------------------------------------------------
-        E = lxml.html.builder.E
-
-        def to_HTML(text):
-            if text is None:
-                return []
-            else:
-                fragment = lxml.html.fragment_fromstring(text, create_parent=True)
-                output = []
-                if fragment.text is not None:
-                    output.append(fragment.text)
-                output.extend(fragment)
-                return output 
+        metadata = get_metadata(str(doc))
 
         items = []
 
-        date = to_HTML(metadata.get("date"))
+        date = parse_html(metadata.get("date"))
         if date is not None:
-            items.append(E.p({"class": "date"}, *date))
+            items.append(HTML.p({"class": "date"}, *date))
 
-        title = to_HTML(metadata.get("title"))
+        title = parse_html(metadata.get("title"))
         if title is not None:
-            items.append(E.h1({"class": "title"}, *title))
-            html.cssselect("head")[0].insert(0, E.title(*title))
+            items.append(HTML.h1({"class": "title"}, *title))
+            head.insert(0, HTML.title(*title))
 
         authors = metadata.get("author") or []
 
         for author in authors:
             if isinstance(author, basestring):
-                name = to_HTML(author)
+                name = parse_html(author)
                 email = None
                 affiliation = None
             else:
-                name = to_HTML(author.get("name"))
-                email = to_HTML(author.get("email"))
-                affiliation = to_HTML(author.get("affiliation"))
+                name = parse_html(author.get("name"))
+                email = parse_html(author.get("email"))
+                affiliation = parse_html(author.get("affiliation"))
 
             if name is not None:
                 if email is not None:
-                    name = [E.a({"href": "mailto:" + email[0]}, *name)]
-                name = E.h2({"class": "author"}, *name)
+                    name = [HTML.a({"href": "mailto:" + email[0]}, *name)]
+                name = HTML.h2({"class": "author"}, *name)
                 items.append(name)
                 if affiliation is not None:
-                    affiliation = E.p({"class": "affiliation"}, *affiliation)
+                    affiliation = HTML.p({"class": "affiliation"}, *affiliation)
                     items.append(affiliation)
         
-        header = E.header({"class": "main"}, *items)
- 
-        body = html.cssselect("body")[0]
+        header = HTML.header({"class": "main"}, *items)
         body.insert(0, header)
 
         # ----------------------------------------------------------------------
-
-        
-       
-
+        info("Generate the standalone HTML file")
         html_str = lxml.html.tostring(html, encoding="utf-8", doctype="<!DOCTYPE html>")
-        file = doc.with_suffix(".html").open("wb")
-        file.write(html_str)
+        doc.with_suffix(".html").open("wb").write(html_str)
 
     sys.exit(0)
 
-#    info("Generate the standalone HTML file")
-#    output_file = doc_name + ".html"
-#    with open(output_file, "w") as output:
-#        output.write(template.replace("__BODY__", body));
-#    subinfo("generated", output_file)
