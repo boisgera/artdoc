@@ -7,11 +7,14 @@ from __future__ import print_function
 import argparse
 import atexit
 import json
+import os
 import pkg_resources
 import re
 import shutil
 import sys
+import tempfile
 import urllib
+import zipfile
 
 # Third-Party Libraries
 import lxml.html
@@ -21,7 +24,7 @@ from plumbum import local
 from plumbum.cmd import mkdir, rm, pandoc, scss
 
 
-
+# ------------------------------------------------------------------------------
 WORKDIR = Path(".")
 ARTDOC = WORKDIR / ".artdoc"
 if ARTDOC.exists():
@@ -149,8 +152,20 @@ def mathjax(url="http://cdn.mathjax.org/mathjax/latest/MathJax.js",
         js = ""
     return [HTML.script(dict(src=url), js)] 
 
-def font_awesome(url="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"): 
-    return [HTML.link(rel="stylesheet", href=url)]
+# TODO: get rid of the hardcoded strings
+def font_awesome(url="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css", 
+                 standalone_url="http://fortawesome.github.io/Font-Awesome/assets/font-awesome-4.3.0.zip",
+                 standalone=False):
+    if standalone:
+        zip_file = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+        zip_file.write(urllib.urlopen(standalone_url).read())
+        zip_filename = zip_file.name
+        zip_file.close()
+        zipfile.ZipFile(zip_filename).extractall(str(ARTDOC))
+        os.remove(zip_filename)
+        return [HTML.link(rel="stylesheet", href=".artdoc/font-awesome-4.3.0/css/font-awesome.min.css")]
+    else:
+        return [HTML.link(rel="stylesheet", href=url)]
 
 def main():
     # TODO: combine command-line and option file.
@@ -294,7 +309,7 @@ def main():
 
         # ----------------------------------------------------------------------
         info("Add Font Awesome support")
-        head.extend(font_awesome())
+        head.extend(font_awesome(standalone=standalone))
 
         # ----------------------------------------------------------------------
         info("Add artdoc css & js files")
