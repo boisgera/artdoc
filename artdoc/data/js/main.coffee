@@ -20,8 +20,6 @@ mathjax_loader = () ->
 outline = (root) ->
   
   root ?= $("body")
-  #console.log "root", root
-
   output = $("<div></div>")
   
   header = root.children("header")
@@ -32,9 +30,7 @@ outline = (root) ->
     item = $("<p>" + heading.first().html() + "</p>")
     console.log "item", item.prop("outerHTML")
     item.appendTo(output)
-    
-  #console.log "output:", output.prop("outerHTML")
-  
+      
   sections = root.children("section")
   if sections.length
     console.log "sections", sections
@@ -42,10 +38,7 @@ outline = (root) ->
     list.appendTo(output)
     sections.each (index, section) -> 
       (outline $(section)).appendTo(list) 
-    #console.log "list", list
-  
-  #console.log "exiting", root
-  #console.log "output:", output.prop("outerHTML")
+
   output
   
 make_toc = () ->
