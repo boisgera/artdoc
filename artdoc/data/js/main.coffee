@@ -1,5 +1,7 @@
 
-mathjax = () ->
+mathjax_loader = () ->
+  # make something with an overlay instead ?
+  # display the mathjax logo ?
   cog = $(
           "<i></i>", 
           {
@@ -7,7 +9,7 @@ mathjax = () ->
            "class": "fa fa-cog fa-spin",
            "style": "font-size:1em;" + 
                       "position:fixed;" +
-                      "top:1em;" +
+                      "top:50%;" +
                       "left:1em;"
           }
          )
@@ -18,7 +20,7 @@ mathjax = () ->
 outline = (root) ->
   
   root ?= $("body")
-  console.log "root", root
+  #console.log "root", root
 
   output = $("<div></div>")
   
@@ -31,7 +33,7 @@ outline = (root) ->
     console.log "item", item.prop("outerHTML")
     item.appendTo(output)
     
-  console.log "output:", output.prop("outerHTML")
+  #console.log "output:", output.prop("outerHTML")
   
   sections = root.children("section")
   if sections.length
@@ -40,12 +42,33 @@ outline = (root) ->
     list.appendTo(output)
     sections.each (index, section) -> 
       (outline $(section)).appendTo(list) 
-    console.log "list", list
+    #console.log "list", list
   
-  console.log "exiting", root
-  console.log "output:", output.prop("outerHTML")
+  #console.log "exiting", root
+  #console.log "output:", output.prop("outerHTML")
   output
   
-$ () -> 
-  mathjax()
-  outline().appendTo("body")
+make_toc = () ->
+  sandwich = $(
+          "<i></i>", 
+          {
+           "id": "mathjax",
+           "class": "fa fa-bars",
+           "style": "font-size:1em;" + 
+                      "position:fixed;" +
+                      "top:1em;" +
+                      "left:1em;" +
+                      "cursor:pointer;"
+          }
+         )
+  sandwich.prependTo("body")
+  sandwich.on("click", () -> $("toc").addClass("active"))
+  
+  console.log outline().prop("outerHTML")
+  
+  outline().appendTo("overlay")
+
+$ () ->
+  $("<div class='overlay'></div>").appendTo("body")
+  mathjax_loader()
+  make_toc()

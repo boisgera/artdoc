@@ -237,8 +237,10 @@ def main():
         print()
 
     info("JS:")
-    coffee("-c", str(JS / "main.coffee"))
-    
+    cmd = coffee["-c", str(JS / "main.coffee")]
+    subinfo(cmd)
+    cmd()    
+
     info("CSS:")
     css_patterns = conf["css"]
     if isinstance(css_patterns, basestring):
