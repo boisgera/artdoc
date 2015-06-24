@@ -28,9 +28,20 @@ import Debug.Trace
 -- (and remove the "Comment" tag from the document ?). Maybe, yes ... I am 
 -- sort of already doing it most of the time ... with "Remark".
 
+-- Unless I decide that blocks (or some kind of blocks) cannot be 
+-- multi-parapgraph ? Such as Theorem, Definitions, etc ? And ask
+-- for an end-marker for multiple-block paragraphs (such as ".." ?) 
+-- That would be similar to "proof".
+-- Dunno, have a look at the existing examples ...
+-- Update: some classes that would be mono-paragraph, that doesn't fly.
+-- A theorem or an example may be a long sequence of stuff, I should not
+-- restrict the number of paragraphs. Forbidding anonymous blocks (but at
+-- the start after a header possibly ?). Is the best way to go.
+
 -- TODO: think of h3 vs bold. Pandoc could do some of the work for me
 --       if I use h3 correctly right ? But the default LaTeX rendering
---       is going to be different ?
+--       is going to be different ? Anyway, if I use strong, I'll have 
+--       to turn the "blocks" into sections.
 
 -- Uhu, sometimes the split is weird before figures (does not include them ?) 
 -- (but now always ? See just above "Standard Defining Functions" in the 
@@ -39,6 +50,9 @@ import Debug.Trace
 
 -- Short-term: when a Math equation ends with a ".", the paragraph is over. Yes ?
 -- No. That's just the end of a SENTENCE.
+
+-- Shit: I have to recognize that a new paragraph that starts with bold is
+-- a closer too. (Say theorem that ends with a list followed by a new theorem).
 
 isCloser :: Block -> Bool
 isCloser HorizontalRule = True

@@ -21,7 +21,7 @@ import lxml.html
 from lxml.html.builder import E as HTML
 from pathlib import Path
 from plumbum import local
-from plumbum.cmd import mkdir, rm, pandoc, scss
+from plumbum.cmd import mkdir, rm, pandoc, scss, coffee
 
 
 # ------------------------------------------------------------------------------
@@ -33,6 +33,7 @@ DATA  = Path(pkg_resources.resource_filename(__name__, "data"))
 atexit.register(pkg_resources.cleanup_resources)
 
 CSS  = DATA / "css"
+JS   = DATA / "js"
 BIN  = DATA / "bin"
 
 # TODO: need the plumbum ProcessExecutionError to fail HARD, 
@@ -132,7 +133,7 @@ def get_metadata(filename):
 
 # TODO: same pattern everywhere, change this: don't require the parent,
 #       return the result as a list, let the caller do the integration.
-def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js",
+def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.js",
            standalone=False):
     if standalone:
         path = ARTDOC / "js" / "jquery.js"
@@ -235,6 +236,9 @@ def main():
     if not bibs:
         print()
 
+    info("JS:")
+    coffee("-c", str(JS / "main.coffee"))
+    
     info("CSS:")
     css_patterns = conf["css"]
     if isinstance(css_patterns, basestring):
@@ -287,6 +291,14 @@ def main():
 
         info("Flag/Box Proofs")
         cmd = local[str(BIN / "proof.hs")]
+        subinfo(cmd, "< json > json")
+        try:
+            json_str = (cmd << json_str)()
+        except Exception as error:
+            print(repr(error))
+
+        info("Wrap Paragraphs/True Blocks/Subsections")
+        cmd = local[str(BIN / "wrap.hs")]
         subinfo(cmd, "< json > json")
         try:
             json_str = (cmd << json_str)()
@@ -392,9 +404,27 @@ def main():
         if date is not None:
             items.append(HTML.p({"class": "date"}, *date))
 
+#        def textify(item):
+#          if isinstance(item, basestring):
+#              return item
+#          elif hasattr(item, "text"):
+#              return item.text
+#          else:
+#              return "".join([textify(it) or "" for it in item])
+
         title = parse_html(metadata.get("title"))
+        title_id = None
         if title is not None:
-            items.append(HTML.h1({"class": "title"}, *title))
+            #title_id = textify(title).lower().replace(" ", "-")
+            items.append(
+              HTML.h1(
+                {"class": "title"}, 
+                HTML.a(
+                  {"href": "#"},
+                  *title
+                )
+              )
+            )
             head.insert(0, HTML.title(*title))
 
         authors = metadata.get("author") or []
@@ -418,8 +448,15 @@ def main():
                     affiliation = HTML.p({"class": "affiliation"}, *affiliation)
                     items.append(affiliation)
         
-        header = HTML.header({"class": "main"}, *items)
+        header_attr = {"class": "main"}
+#        if title_id is not None:
+#          header_attr["id"] = title_id
+        header = HTML.header(header_attr, *items)
+#        print("HEADER", lxml.html.tostring(header))
         body.insert(0, header)
+#        print("BODY", lxml.html.tostring(body))
+#        print("HTML", lxml.html.tostring(html))
+
 
         # ----------------------------------------------------------------------
         info("Generate the standalone HTML file")
