@@ -1,6 +1,7 @@
 
 General Idea: handle LaTeX-heavy article-like markdown document to HTML conversion.
 
+
   - TODO: notification region on the right that comes & goes (animation).
     Use a card. Ex: Mathjax with cog during the processing, then check.
 
@@ -12,6 +13,8 @@ General Idea: handle LaTeX-heavy article-like markdown document to HTML conversi
   - TODO: slide mode
 
   - TODO: "active(s) sections" & what can be done with them.
+    For example, in toc mode, highlight / position the current section
+    or subsection at the top.
 
   - need to deal with two image size policy: either "fit width", or use the same
     scale than for the LaTeX document (ex: when TeX fonts are embedded).
