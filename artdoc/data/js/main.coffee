@@ -39,9 +39,10 @@ outline = (root) ->
 
   output
   
-toc_switch = () ->
+toc_switch = (status=undefined) ->
   overlay = $(".overlay")
-  if overlay.css("display") == "none"
+  status ?= overlay.css("display") == "none"
+  if status == on
     overlay.css("display", "block")
     $("#toc-icon").removeClass("fa-bars").addClass("fa-times")
   else
@@ -63,8 +64,17 @@ make_toc = () ->
           }
          )
   sandwich.prependTo("body")
-  sandwich.on("click", toc_switch)
-  outline().addClass("toc").appendTo(".overlay")
+  sandwich.on("click", (event) -> toc_switch())
+  
+  console.log ".toc a:", $(".toc a")
+  
+  outline().addClass("toc").appendTo(".overlay")  
+  $(".toc a").on("click", 
+                 (event) -> 
+                   console.log "*****************"
+                   toc_switch(off)
+                   true
+                 )
 
 $ () ->
   $("<div class='overlay' style='display:none;'></div>").appendTo("body")

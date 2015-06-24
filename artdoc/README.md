@@ -1,6 +1,18 @@
 
 General Idea: handle LaTeX-heavy article-like markdown document to HTML conversion.
 
+  - TODO: notification region on the right that comes & goes (animation).
+    Use a card. Ex: Mathjax with cog during the processing, then check.
+
+  - TODO: study an "outline mode" that would work as a toc too: details
+    (such as paragraphs) disappear, titles are shrinked, etc, the 
+    transformation is animated. Nagivate, then go back to "document" mode
+    (or slide mode BTW)
+
+  - TODO: slide mode
+
+  - TODO: "active(s) sections" & what can be done with them.
+
   - need to deal with two image size policy: either "fit width", or use the same
     scale than for the LaTeX document (ex: when TeX fonts are embedded).
     Needs to be done for pdf, svg, png, etc.
