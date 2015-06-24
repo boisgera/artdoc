@@ -28,12 +28,10 @@ outline = (root) ->
   heading = header.children("h1, h2, h3, h4, h5, h6")
   if heading.length
     item = $("<p>" + heading.first().html() + "</p>")
-    console.log "item", item.prop("outerHTML")
     item.appendTo(output)
       
   sections = root.children("section")
   if sections.length
-    console.log "sections", sections
     list = $("<ul></ul>")
     list.appendTo(output)
     sections.each (index, section) -> 
@@ -41,27 +39,34 @@ outline = (root) ->
 
   output
   
+toc_switch = () ->
+  overlay = $(".overlay")
+  if overlay.css("display") == "none"
+    overlay.css("display", "block")
+    $("#toc-icon").removeClass("fa-bars").addClass("fa-times")
+  else
+    overlay.css("display", "none")
+    $("#toc-icon").removeClass("fa-times").addClass("fa-bars")
+
 make_toc = () ->
   sandwich = $(
           "<i></i>", 
           {
-           "id": "mathjax",
+           "id": "toc-icon",
            "class": "fa fa-bars",
            "style": "font-size:1em;" + 
                       "position:fixed;" +
                       "top:1em;" +
                       "left:1em;" +
-                      "cursor:pointer;"
+                      "cursor:pointer;" +
+                      "z-index: 200;"
           }
          )
   sandwich.prependTo("body")
-  sandwich.on("click", () -> $("toc").addClass("active"))
-  
-  console.log outline().prop("outerHTML")
-  
-  outline().appendTo("overlay")
+  sandwich.on("click", toc_switch)
+  outline().addClass("toc").appendTo(".overlay")
 
 $ () ->
-  $("<div class='overlay'></div>").appendTo("body")
+  $("<div class='overlay' style='display:none;'></div>").appendTo("body")
   mathjax_loader()
   make_toc()

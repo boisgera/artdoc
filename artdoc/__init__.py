@@ -242,34 +242,39 @@ def main():
     cmd()    
 
     info("CSS:")
-    css_patterns = conf["css"]
-    if isinstance(css_patterns, basestring):
-        css_patterns = [css_patterns]
-    csss = []
-    csss.append(CSS / "style.css")
-    #subinfo("artdoc stylesheet:")
-    subinfo(str(csss[0]))
-    for pattern in css_patterns:
-        matches = list(WORKDIR.glob(pattern))
-        #subinfo("matching {!r}:".format(pattern))
-        for match in matches:
-            if match.suffix == ".css":
-                if match not in csss:
-                    subinfo(str(match))
-                    csss.append(match)
-            elif match.suffix == ".scss":
-                css_file = match.with_suffix(".css")
-                cmd = scss[str(match), str(css_file)]
-                cmd()
-                subinfo(str(css_file) + " (from " + str(match) + ")")
-                csss.append(css_file)
-            else:
-                sys.exit("error: unknown stylesheet extension {!r}".format(match.suffix))
-    new_csss = []
-    for css in csss:
-        if css not in new_csss:
-            new_csss.append(css)
-    csss = new_csss
+    scss_stylesheet = CSS / "style.scss"
+    css_stylesheet = scss_stylesheet.with_suffix(".css")
+    cmd = scss[str(scss_stylesheet), str(css_stylesheet)]
+    subinfo(str(cmd))
+    cmd()
+#    css_patterns = conf["css"]
+#    if isinstance(css_patterns, basestring):
+#        css_patterns = [css_patterns]
+#    csss = []
+#    csss.append(CSS / "style.scss")
+#    subinfo("artdoc stylesheet:")
+#    subinfo(str(csss[0]))
+#    for pattern in css_patterns:
+#        matches = list(WORKDIR.glob(pattern))
+#        subinfo("matching {!r}:".format(pattern))
+#        for match in matches:
+#            if match.suffix == ".css":
+#                if match not in csss:
+#                    subinfo(str(match))
+#                    csss.append(match)
+#            elif match.suffix == ".scss":
+#                css_file = match.with_suffix(".css")
+#                cmd = scss[str(match), str(css_file)]
+#                cmd()
+#                subinfo(str(css_file) + " (from " + str(match) + ")")
+#                csss.append(css_file)
+#            else:
+#                sys.exit("error: unknown stylesheet extension {!r}".format(match.suffix))
+#    new_csss = []
+#    for css in csss:
+#        if css not in new_csss:
+#            new_csss.append(css)
+#    csss = new_csss
 
     # TODO: copy only what is required.
     shutil.copytree(str(DATA), str(ARTDOC))
