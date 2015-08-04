@@ -312,6 +312,14 @@ def main():
         except Exception as error:
             print(repr(error))
 
+        info("Flag Tombstones (end of proofs)")
+        cmd = local[str(BIN / "tombstone.hs")]
+        subinfo(cmd, "< json > json")
+        try:
+            json_str = (cmd << json_str)()
+        except Exception as error:
+            print(repr(error))
+
         info("Convert Images to SVG Images")
         cmd = local[str(BIN / "svg.hs")]
         subinfo(cmd, "< json > json")

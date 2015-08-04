@@ -8,6 +8,8 @@ import Data.List.Split
 import Data.Tuple
 import Debug.Trace
 
+-- TODO: support multiple classes (such as in "Theorem & Definition").
+
 -- Consistenly wraps sequence of blocks that start with a paragraph with 
 -- bold text into a div. The content of the bold text should be something
 -- like "Section-Type -- Title" (still in flux, we also may have keywords
