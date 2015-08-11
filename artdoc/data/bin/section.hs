@@ -12,8 +12,21 @@ import Data.Tuple
 import Debug.Trace
 
 
+-- TODO: some proofs (but not all) are undected and are not sectionned ? 
+--       Study the issue ...
+
+-- TODO: deal with "generic" sections, that shall not be displayed.
+
+-- TODO: AFAICT, the tombstone does not mark the end of a proof (because
+--       we have a past-the-end only termination scheme). Combine the pte
+--       with a "end" scheme ?
+
 -- TODO: see how pandoc flattens nested inlines to get the text and only the
 --       text. That can be useful, lead to more robust string extraction.
+
+-- TODO: use data-attributes and CSS to deal with lightweight sections with,
+--       says ":" as a separator (we want to display the stuff, but not in
+--       the h6 content, so that ids & tocs are fine.)
 
 -- TODO: manage proofs here (now, they are in divs, it's not appropriate/consistant).
 
