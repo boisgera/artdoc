@@ -2,6 +2,7 @@
 
 import Text.Pandoc
 import Text.Pandoc.JSON
+import Text.Pandoc.Definition
 import Data.Char
 import Data.List
 import Data.List.Split
@@ -9,6 +10,10 @@ import Data.Tuple
 import Debug.Trace
 
 -- TODO: support multiple classes (such as in "Theorem & Definition").
+
+-- TODO: replace the "strong header" by some wrapped version of it.
+--       (say, span with a class header), then, link this header to
+--       the section.
 
 -- Consistenly wraps sequence of blocks that start with a paragraph with 
 -- bold text into a div. The content of the bold text should be something
@@ -20,6 +25,10 @@ import Debug.Trace
 -- What if there is no "--" separator ? Do we have a type or a title ?
 -- I say, let's have a restricted list of keywords so that we can 
 -- decide from the context.
+
+-- TODO: commas or --- (em-dashes) without spaces are NOT in separate
+--       inlines, so we need to run a "deep split" on inlines to analyze
+--       paragraph preambles.
 
 -- TODO: think more about the "true sections" vs "lightweight sections".
 --       I could do "real" sections for all "chunks" instead of the
@@ -103,7 +112,8 @@ kosher char = isAlphaNum char
 
 get_strong_preamble :: [Block] -> [Inline]
 get_strong_preamble ((Para ((Strong (inlines)):_)):_) = inlines
-get_strong_preamble _ = [Str (""), Str("–"), Str("")]
+get_strong_preamble _ = [Str("Generic"), Text.Pandoc.Definition.Space, 
+                         Str("–"), Text.Pandoc.Definition.Space, Str("")]
 
 add_div_ :: ([Block], [Block]) -> ([Block], [Block])
 add_div_ (done, []) = (done, [])

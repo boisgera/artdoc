@@ -5,6 +5,7 @@ body
     font-family: Alegreya, serif
     font-size: 22px
     text-align: justify
+    text-rendering: optimizeLegibility
     hyphens: auto
     -moz-hyphens: auto
 
@@ -60,6 +61,10 @@ body
       &::after
         content: "."
 
+    p
+      margin-top: 1em
+      margin-bottom: 1em
+
     code
       /* background-color: rgb(235,235,235); */
       font-family: Inconsolata;
@@ -107,9 +112,163 @@ body
       svg
         color: black;
 
+/*
+ * Slides Mode
+ * -----------------------------------------------------------------------------
+ */
+body.slides 
+  font-size: 44px // all font-size are multiplied by two 
+                 //  (but some in the main header for now)
+
+  h1
+    font-size: 72px
+    font-weight: bold
+
+  h2
+    font-size: 56px
+    font-weight: bold
+
+  h3
+    font-size: 44px
+    font-weight: bold
+
+  h4, h5, h6
+    font-size: 44px
+    font-weight: bold
+    float: left
+    margin-right: 1em
+    margin-top: 0px
+    margin-bottom: 0px
+    &::after
+      content: "."
+
+/*
+ * Outline Mode
+ * -----------------------------------------------------------------------------
+ */
+
+
+body.outline
+    max-width: 32em
+    margin: auto
+    font-family: Alegreya, serif
+    font-size: 22px
+    text-align: justify
+    hyphens: auto
+    -moz-hyphens: auto
+
+    header.main
+      h1
+        font-size: 48px
+        font-weight: bold
+      h2
+        font-size: 36px
+        font-weight: bold
+      h3
+        font-size: 22px
+        font-weight: bold
+
+    a
+      text-decoration: none
+    a:hover
+      text-decoration: underline
+
+    h1, h2, h3, h4, h5, h6
+      //transition: 0s, 2.4s, all, ease-in
+      a:hover
+        text-decoration: none;
+
+    a:link
+      color: black
+
+    a:visited
+      color: black
+
+    h1.title
+      font-size: 48px
+      font-weight: bold
+
+    /*
+    h1
+      font-size: 22px
+      font-weight: normal
+
+    h2
+      font-size: 22px
+      font-weight: normal
+
+    h3
+      font-size: 22px
+      font-weight: normal
+
+    h4, h5, h6
+      font-size: 22px
+      font-weight: normal
+
+    */
+
+    code
+      display: none
+      /* background-color: rgb(235,235,235); */
+      font-family: Inconsolata;
+
+    pre
+      margin: 1em 0em 1em 0em
+      padding: 0.5em 1em 0.5em 1em
+      background-color: rgb(235,235,235)
+      code
+        color: black
+
+    blockquote
+      background: #f9f9f9
+      border-left: 5px solid #ccc
+      margin: 1em 2em
+      padding: 0.5em 1em
+      p
+        &:first-child
+          margin-top: 0em;
+        &:last-child
+          margin-bottom: 0em;
+
+    .remark, .theorem, .definition, .proof, .example, .generic, .footnotes
+       overflow: hidden
+       height: 0
+       // display: none
+       transition: 0s, 10s, all, ease
+    /*
+     * Images and Figures
+     */
+    img
+      display: none
+      width: 32em
+
+    figcaption
+      display: none
+      margin-top: 0.0em
+      text-align: center
+      font-style: italic
+
+    figure
+      margin: 0px
+
+    /*
+     * Math
+     */
+
+    .tombstone
+      float: right
+
+    span.MathJax_SVG
+      svg
+        color: black;
+
+/*
+ * -----------------------------------------------------------------------------
+ */
+
    
   /*
-   * Overlay (Table of Contents)
+   * Table of Contents Overlay
    */
   .overlay
     background-color: white

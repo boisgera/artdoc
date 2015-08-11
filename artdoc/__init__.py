@@ -274,8 +274,16 @@ def main():
 #        except Exception as error:
 #            print(repr(error))
 
+#        info("Wrap Section-Like Sequence of Blocks")
+#        cmd = local[str(BIN / "div.hs")]
+#        subinfo(cmd, "< json > json")
+#        try:
+#            json_str = (cmd << json_str)()
+#        except Exception as error:
+#            print(repr(error))
+
         info("Wrap Section-Like Sequence of Blocks")
-        cmd = local[str(BIN / "div.hs")]
+        cmd = local[str(BIN / "section.hs")]
         subinfo(cmd, "< json > json")
         try:
             json_str = (cmd << json_str)()
