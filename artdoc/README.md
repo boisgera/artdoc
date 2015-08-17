@@ -1,6 +1,17 @@
 
 General Idea: handle LaTeX-heavy article-like markdown document to HTML conversion.
 
+  - "Hide" sections: transfer them in the toc (and hide them there), so
+    that they can be easily restored (from the toc, that also displays
+    which one are visible / hidden). No event is ever lost, the margin
+    collapsing issue do not exist, etc. Only the link to the hidden
+    sections may have to trigger *something* (make the section visible
+    again ? Display a message with the option to ?), but we intercept 
+    those calls already (for animatin purposes).
+
+  - Progress bar with the loading of MatJax objects ?
+
+  - Detect Firefox and go MathML if found instead of HTML + CSS ?
 
   - TODO: notification region on the right that comes & goes (animation).
     Use a card. Ex: Mathjax with cog during the processing, then check.
