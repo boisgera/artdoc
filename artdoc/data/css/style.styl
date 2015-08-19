@@ -21,6 +21,7 @@ body
         font-weight: bold
 
     a
+      outline: 0
       text-decoration: none
     a:hover
       text-decoration: underline
@@ -60,6 +61,14 @@ body
       margin-bottom: 0px
       &::after
         content: "."
+
+    h4:empty, h5:empty, h6:empty
+      font-size: 22px
+      font-weight: bold
+      float: left
+      margin: 0px
+      &::after
+        content: ""
 
     p
       margin-top: 1em

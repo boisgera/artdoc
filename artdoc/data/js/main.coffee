@@ -159,17 +159,35 @@ testAnim = () ->
 
        # TODO: have a look at jquery plugins wrt animations
 
-
 highlight = ->
   selection = window.getSelection()
   console.log selection 
 
+  
+# this is ugly, try another easing or JQuery animate. Do manual shit with
+# requestAnimationFrame instead ?
+# TODO: measure the distance & take more time if we are far (~constant speed).
+smoothLinks = ->  
+  $("a[href*=#]:not([href=#])").click ->
+    if location.pathname.replace(/^\//,'') is this.pathname.replace(/^\//,'') and
+       location.hostname is this.hostname
+      target = $(this.hash)
+      console.log "top:", target.offset().top
+      target.velocity "scroll",
+        #top: target.offset().top, 
+        duration: 600,
+        easing: "easeOutCubic",
+      return false
+
+  
 $ ->
   body = $ "body"
   body.append $("<div class='overlay' style='display:none;'></div>")
   body.prepend MathJaxLoader()
   install_toc()
 
+  smoothLinks()
+  
   #testAnim()
 
   $(document).on "keydown", (event) ->

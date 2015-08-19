@@ -5,9 +5,9 @@ import qualified Text.Pandoc.Builder
 import Text.Pandoc.Definition
 import Text.Pandoc.JSON
 import qualified Text.Pandoc.Shared
-import Data.Char
+import qualified Data.Char
 import Data.List
-import Data.List.Split
+import Data.List.Split (splitOneOf)
 import Data.Tuple
 import Debug.Trace
 
@@ -92,6 +92,128 @@ import Debug.Trace
 -- sections into section, that is no good.
 
 
+--------------------------------------------------------------------------------
+-- Lightweight Sections
+--------------------------------------------------------------------------------
+
+-- Let's make a proper analysis of the "title" of lighweight/typed sections.
+-- The sequence of inlines that represents the title should have the following
+-- structure:
+--
+--   - (optionally) words (alphabetic ? alphanumeric ? hyphen allowed ?
+--     do we got HTML(4) and add _, :, . ??? A period at the end would suck ...), 
+--     separated by "," or "&": these are the types 
+--     (or tags or classes) of the section.
+--   - an extra title (optional).
+--   - in the middle (if needed, that is if we have type(s) and title), 
+--     an en-dash surrounded by spaces or an em-dash (without spaces).
+--
+--     end separators ? ('.', ':', to get removed & remembered. REALLY ? 
+--     '?' can't get removed for example ...)    
+--
+--   The mess happens when only type or title is present: do we have a 
+--   title or types ? I'd say use the following heuristic: if it does 
+--   not follow strictly the types pattern, that's a title (say, multiple
+--   words separated by spaces without "," or "&", that should rule out
+--   95% of the use cases; the use of '?' or '.' can also help.)
+
+--------------------------------------------------------------------------------
+
+
+enDash :: Char
+enDash = '\8211'
+
+emDash :: Char
+emDash = '\8212'
+
+dashes :: [Inline]
+dashes = [ Str [enDash], Str [emDash] ]
+
+guessSplit :: [Inline] -> ([Inline], [Inline])
+guessSplit inlines = case elem Space inlines of
+  True -> ([], inlines)  -- this is a title 
+  False -> (inlines, []) -- this is a (single) type
+
+split :: [Inline] -> ([Inline], [Inline])
+split inlines = 
+  let
+    parts = splitOneOf dashes inlines
+  in
+    case length parts of
+      3 -> error "too many dashes"
+      2 -> (parts !! 0, parts !! 1) 
+      1 -> guessSplit (parts !! 0)
+
+toString :: [Inline] -> String
+toString (i:is) = 
+  let
+    str = case i of 
+      Str string -> string
+      Space -> " "
+      Emph inlines -> toString inlines
+      Strong inlines -> toString inlines
+      _ -> ""
+  in
+    str ++ (toString is)   
+toString [] = ""
+
+strip :: String -> String
+strip = f . f
+   where f = reverse . dropWhile Data.Char.isSpace
+
+getClasses :: [Inline] -> [String]
+getClasses inlines = 
+  let 
+    types = splitOneOf ",+&" $ toString inlines
+    cleanup = map $ (map Data.Char.toLower) . strip
+  in
+    cleanup types
+
+headerize :: [Block] -> [Block] -- create header for lightweight sections.
+headerize ((Para ((Strong inlines):content)):blocks) = 
+  let 
+    (types, title) = split inlines
+    cls = getClasses types
+    attr = [] 
+  in 
+    (headerSeparatorNazi (Header 6 ("", cls, attr) inlines)) : (Para content) : blocks
+headerize ((Para content):blocks) = 
+  (headerSeparatorNazi (Header 6 ("", [], []) [])) : (Para content) : blocks
+headerize x = x
+
+-- TODO: deal with titles ending with "." or ":": strip them and add the sep
+--       in a data-sep field. Rk: when there is no sep, add one, UNLESS THE
+--       title is actually empty.
+--       That may be a little insane ... We can't strip "?" from the title
+--       for use in toc for example, but we can't add "." either to it ...
+
+extractSeparator :: [Inline] -> ([Inline], String)
+extractSeparator [Str string] = 
+  case isSuffixOf "." string of
+    True -> ([Str ((reverse . tail. reverse) string)], ".")
+    False -> case isSuffixOf ":" string of
+      True -> ([Str ((reverse . tail. reverse) string)], ":")
+      False -> ([Str string], "") 
+extractSeparator (i:is) = 
+  let
+    (inlines, sep) = extractSeparator is
+  in
+    (i:inlines, sep)
+extractSeparator [] = ([], "")
+
+headerSeparatorNazi :: Block -> Block
+headerSeparatorNazi (Header lvl (id, cls, attr) content@(c:cs)) =
+  let 
+    (content', separator) = extractSeparator content
+    attr' = attr ++ [("data-sep", separator)]
+  in
+    Header lvl (id, cls, attr') content'
+headerSeparatorNazi x = x
+
+
+--------------------------------------------------------------------------------
+
+
 section_types = ["proof", 
                  "theorem", 
                  "lemma",
@@ -105,7 +227,8 @@ section_types = ["proof",
                  "unknown"] -- use it or not ? Try not to ...
 
 -- TODO: Split a sequence of inlines on "–" (en-dash) or "—" (em-dash).
---       Actually, IT SHOULD BE A EM-DASH.
+--       Actually, IT SHOULD BE A EM-DASH. (US), but it breaks the grey,
+--       so I am gonna stick with the UK convention here ...
 
 
 
@@ -119,8 +242,6 @@ start _ = False -- TODO: think more about this (figures, formulas, etc)
 -- the type from the complete title ? Not done now, but think of it
 -- (rk: it would probably be ambiguous anyway).
 
-dashes :: [Inline]
-dashes = [ Str "–", Str "—" ]
 
 -- Nothing short of horrible ...
 get_types :: [Inline] -> [String]
@@ -134,37 +255,37 @@ strip_period [Str string] =
 strip_period [i] = [i]
 strip_period (i:is) = i:strip_period(is)
 
-kosher :: Char -> Bool
-kosher '-' = True
-kosher '_' = True
-kosher char = isAlphaNum char
+--kosher :: Char -> Bool
+--kosher '-' = True
+--kosher '_' = True
+--kosher char = isAlphaNum char
 
-headerize :: [Block] -> [Block] -- create header for lightweight sections.
-headerize ((Para ((Strong inlines):content)):blocks) =
-  let 
-    inlines' = strip_period inlines
-    id = Text.Pandoc.Shared.uniqueIdent inlines' []
-    inlines'' = head $ splitOn dashes inlines'
-    types = get_types inlines'' -- list of Strings
-    cls = map (map toLower) types -- filter kosher (map toLower (head types))
-    attr = [] 
-  in 
-    -- rk: our generated ids may well not be unique ... (say for
-    --     anonymous typed sections such as "Remark.")
-    --     this is an issue for the autolinker, patch afterwards ?
-    --     or generate empty id when no title is detected ?
-    (Header 6 (id, cls, attr) inlines') : (Para content) : blocks
-headerize ((Para content):blocks) = 
-  let strong = Strong [
-                 Str("Generic"), 
-                 Text.Pandoc.Definition.Space, 
-                 Str("–"), 
-                 Text.Pandoc.Definition.Space, 
-                 Str("")
-               ]
-  in
-    headerize $ (Para (strong:content)):blocks
-headerize x = x
+--headerize :: [Block] -> [Block] -- create header for lightweight sections.
+--headerize ((Para ((Strong inlines):content)):blocks) =
+--  let 
+--    inlines' = strip_period inlines
+--    id = Text.Pandoc.Shared.uniqueIdent inlines' []
+--    inlines'' = head $ splitOn dashes inlines'
+--    types = get_types inlines'' -- list of Strings
+--    cls = map (map toLower) types -- filter kosher (map toLower (head types))
+--    attr = [] 
+--  in 
+--    -- rk: our generated ids may well not be unique ... (say for
+--    --     anonymous typed sections such as "Remark.")
+--    --     this is an issue for the autolinker, patch afterwards ?
+--    --     or generate empty id when no title is detected ?
+--    (Header 6 (id, cls, attr) inlines') : (Para content) : blocks
+--headerize ((Para content):blocks) = 
+--  let strong = Strong [
+--                 Str("Generic"), 
+--                 Text.Pandoc.Definition.Space, 
+--                 Str("–"), 
+--                 Text.Pandoc.Definition.Space, 
+--                 Str("")
+--               ]
+--  in
+--    headerize $ (Para (strong:content)):blocks
+--headerize x = x
 
 -- there are symbols that END, some that force a NEW, ... and the others.
 past_the_end :: Block -> Bool

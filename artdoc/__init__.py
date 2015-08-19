@@ -144,6 +144,10 @@ def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.js",
     else:
         return [HTML.script(src=url)]
 
+def velocity(*args, **kwargs):
+    return [HTML.script(src=str(ARTDOC / "js" / "velocity.js"))]
+
+
 # TODO: resolve ARTDOC wrt WORKDIR, then use this instead of the hardcoded paths.
 def artdoc():
     return [
@@ -324,6 +328,11 @@ def main():
         # ----------------------------------------------------------------------
         info("Add JQuery")
         head.extend(jquery(standalone=standalone))
+
+        # ----------------------------------------------------------------------
+        info("Add Velocity")
+        head.extend(velocity(standalone=standalone))
+
 
         # ----------------------------------------------------------------------
         info("Add Google Fonts support")
