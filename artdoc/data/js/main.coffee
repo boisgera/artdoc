@@ -1,42 +1,146 @@
 
-# See jquery css: the std would be to use camel case instead.
-attr = (object) ->
-    (k.replace('_','-') + ":" + v for k, v of object).join("; ") 
+# TODO
+# ==============================================================================
+#
+#   - TOC switch suddenly very slow, investigate ... NB: slow only in firefox,
+#     not in chrome. Linked to the switch of overlay css prop ? (doesn't work
+#     as expected anyway).
 
-MathJaxLoader = ->
-  loader = $ "<i></i>", 
-             id: "mathjax-loader",
-             class: "fa fa-cog fa-spin",
-             style: attr 
-                      font_size: "1em" 
-                      position: "fixed"
-                      top: "50%"
-                      left: "1em"
-  # The "New Math Pending" and "New Math" messages 
-  # (when newly typeset elements are added to the DOM ?)
-  # is where we spend most of the time 
-  # (see <http://docs.mathjax.org/en/latest/signals.html>)
-  # and this is a phase where MathJax has already DONE its processing ?
-  # This is just the browser dealing with slow DOM CSS & font handling ?
-  # We have ~700 such elements.
-  # Well, OK, that's "New Math Pending" that seems to take some time.
-  # Note that Chrome renders a page in 6 secs when Firefox needs 14 sec.
+# Generic Helpers
+# ==============================================================================
+type = (item) -> 
+  Object::toString.call(item)[8...-1].toLowerCase();
 
-  # Mmm, note that when I save the rendered file (ok, there are arguably
-  # some Mathjax errors: "file load error", and some of the dynamic features
-  # of MathJax do not work such as get text formula, or renderer selection,
-  # BUT), the page seems OK, and MathJax needs only 1 sec or so to display it.
+# Method Observers
+# ==============================================================================
 
-  start = undefined
+# Mix into your object prototype to enable method observers.
+connect = (source, target) ->
+  source = source.name if source.name?
 
-  MathJax.Hub.signal.Interest (msg) -> 
-    if not start?
-      start = (new Date()).valueOf()
-    console.log "MathJax:", msg[0]
-    if msg[0] is "End Process"
-      console.log "MathJax run:", ((new Date()).valueOf() - start) / 1000, "sec"
-  MathJax.Hub.Register.StartupHook "End", -> loader.remove()
-  return loader
+  this._targets or= {}
+  targets = this._targets[source] or= []
+  targets.push target
+  
+  method = this[source]
+  if not method._connected?
+    new_method = (args...) =>
+      output = method.call(this, args...)
+      for target in targets
+        target(this, args...)
+      return output 
+    new_method._connected = on
+    this[source] = new_method
+
+  return undefined
+
+# Icons
+# ==============================================================================
+
+extend = (base, diff) ->
+  for k, v of diff
+    bv = base[k]
+    if k is "style" and bv? and type(v) is "object" # TODO: raise type error 
+      # instead of doing smthin stupid when this is not an object
+      extend(bv, v)
+    else if k is "class" and bv?
+      base[k] = [base[k], v].join(" ")
+    else
+      base[k] = v
+  return base
+
+
+# for the style, work with selector/style pairs instead to be able to
+# reach inside nested components ? (and actually keeping most of the
+# power of cascading style sheets ?). Actually, we could accept both
+# styles (distinguish on the type, array or object). Argh, the
+# diffing algo for the extension is likely to become a pure mess.
+# And there is no graceful way to specify nesting either right ?
+# I mean, could probably do something with a style in a style and
+# somehow concatenate selectors, bit it would be brittle and complex.
+class Component
+  constructor: (options) ->
+    if this.html? # error if undefined ?
+      this.html.attr("id", options.id) if options.id?
+      this.html.addClass(options.class) if options.class?
+      this.html.css(options.style) if options.style?  
+
+# TODO: define a configure static method instead of the constructor ?
+#       Sure thing. Then, let go of the whole Component base class idea ?
+#       Ask for an explicit html argument so that they will be no temptation
+#       to call the stuff before html actually exists.
+
+class Icon extends Component
+  constructor: (type, options) ->
+    this.html = html = $("<i></i>", class: "fa fa-" + type)
+    super options
+
+  spin: (status = on) ->
+    if status
+      this.html.addClass "fa-spin"
+    else
+      this.html.removeClass "fa-spin"
+
+# tmp
+#start = undefined
+
+class MathJaxLoader extends Icon
+  constructor: (options) ->
+    options = extend MathJaxLoader.defaults(), options
+    super "cog", options
+    this.spin()
+
+    # tmp ------------------------------------------------------------------------
+#    MathJax.Hub.signal.Interest (msg) -> 
+#      if not start?
+#        start = (new Date()).valueOf()
+#      if msg[0] is "New Math Pending"
+#        console.log "MathJax: New Math Pending"
+#      else if msg[0] is "New Math"
+#        console.log "MathJax: New Math"
+#      else
+#        console.log "MathJax:", msg
+#      if msg[0] is "End Process"
+#        console.log "MathJax run:", ((new Date()).valueOf() - start) / 1000, "sec"
+    # ----------------------------------------------------------------------------
+
+    # this component, like, you know, removes itself when done ???
+    MathJax.Hub.Register.StartupHook "End", => this.html.remove()
+
+  this.defaults = () ->
+    class:
+      "mathjax-loader"
+    style:
+      fontSize: "1em" 
+      position: "fixed"
+      top: "50%"
+      left: "1em"
+
+# Table of Contents
+# ==============================================================================
+
+# Q: accept html argument to the constructor instead (the icons ?)
+# Q: generic configurability ? (id, class, style ?) 
+
+class Switch extends Component
+  constructor: (@typeOn = "bars", @typeOff = "times", options) ->
+    this.html = $("<i></i>", class: "fa")
+    this.off()
+    super options
+
+  connect: connect
+
+  on: ->
+    this.html.removeClass("fa-" + this.typeOff).addClass("fa-" + this.typeOn)
+    this.status = on
+
+  off: ->
+    this.html.removeClass("fa-" + this.typeOn).addClass("fa-" + this.typeOff)
+    this.status = off
+
+  toggle: (status = undefined) ->
+    status ?= not this.status
+    if status is on this.on() else this.off()
 
 make_toc = (root) ->
   root ?= $("body")
@@ -57,38 +161,44 @@ make_toc = (root) ->
   toc.addClass("toc")
   return toc
  
+# This conflates two things: the change in the state of the button and looks
+# which should be internal to the Button, and the consequence on the TOC,
+# which should be externally managed. The button may export the "on", 
+# "off" and "switch" event for example, as well as status attribute.
 toc_switch = (status=undefined) ->
   overlay = $(".overlay")
   status ?= overlay.css("display") is "none"
   if status == on
     overlay.css("display", "block")
-    $("#toc-button").removeClass("fa-bars").addClass("fa-times")
+    overlay.focus()
+    $("body").css(overflow: "hidden")
+    $("#hamburger").removeClass("fa-bars").addClass("fa-times")
   else
     overlay.css("display", "none")
-    $("#toc-button").removeClass("fa-times").addClass("fa-bars")
+    $("body").css(overflow: "auto")
+    $("#hamburger").removeClass("fa-times").addClass("fa-bars")
 
-make_toc_button = ->
-  hamburger = $ "<i></i>", 
-                id: "toc-button",
+Hamburger = ->
+  $("body").on "click", "#hamburger", (event) -> toc_switch()
+  hamburger = $ "<i>", 
+                id: "hamburger",
                 class: "fa fa-bars",
-                style: attr
-                         font_size: "1em" 
-                         position: "fixed"
-                         top: "1em"
-                         left: "1em"
-                         cursor: "pointer"
-                         z_index: 200
-  $("body").on 
-    click: (event) -> toc_switch(), 
-    "#toc-button"
-  return hamburger
+                css:
+                  fontSize: "1em" 
+                  position: "fixed"
+                  top: "1em"
+                  left: "1em"
+                  cursor: "pointer"
+                  zIndex: 200
 
 install_toc = () ->
-  $("body").prepend make_toc_button()
-  $(".overlay").append make_toc() 
+  $("body").prepend Hamburger()
+  $(".overlay").append make_toc()
   $(".toc a").on "click", (event) -> 
     toc_switch(off)
     true
+
+# ------------------------------------------------------------------------------
 
 switchOutline = (status) ->
   details = $(".remark, .theorem, .definition, .proof, .example, .generic, .footnotes")
@@ -167,6 +277,7 @@ highlight = ->
 # this is ugly, try another easing or JQuery animate. Do manual shit with
 # requestAnimationFrame instead ?
 # TODO: measure the distance & take more time if we are far (~constant speed).
+
 smoothLinks = ->  
   $("a[href*=#]:not([href=#])").click ->
     if location.pathname.replace(/^\//,'') is this.pathname.replace(/^\//,'') and
@@ -179,11 +290,20 @@ smoothLinks = ->
         easing: "easeOutCubic",
       return false
 
-  
+Overlay = -> $ "<div>",
+    class: "overlay" 
+    css:
+      display: "none"
+      position: "fixed"
+      top: "0px"
+      backgroundColor: "white"
+      opacity: "1.0"
+      zIndex: 100
+
 $ ->
-  body = $ "body"
-  body.append $("<div class='overlay' style='display:none;'></div>")
-  body.prepend MathJaxLoader()
+  body = $("body")
+  body.append Overlay()
+  body.prepend (new MathJaxLoader).html
   install_toc()
 
   smoothLinks()

@@ -355,6 +355,17 @@ def main():
         html.set("lang", "en") 
 
         # ----------------------------------------------------------------------
+        info("Ensure ids uniqueness")
+        id_count = {}
+        for elt in html.iter():
+          _id = elt.get("id")
+          if _id is not None:
+             count = id_count.get(_id, 0)
+             if count > 0:
+                 elt.set("id", _id + "-" + str(count))
+             id_count[_id] = count + 1
+
+        # ----------------------------------------------------------------------
         info("Turning headers into self-links")
         sections = html.cssselect("section")
         for section in sections:

@@ -169,14 +169,30 @@ getClasses inlines =
   in
     cleanup types
 
+-- I am afraid that I have to deal with the generation of ids ...
+-- See Text.Pandoc.Shared.uniqueIdent. I can't really ensure uniqueness,
+-- will have to do some post-processing at the Python or js level
+-- eventually.
+
+stripPeriod :: [Inline] -> [Inline]
+stripPeriod [Str string] = 
+  case isSuffixOf "." string of
+    True -> [Str ((reverse . tail. reverse) string)]
+    False -> [Str string]
+stripPeriod [i] = [i]
+stripPeriod (i:is) = i:stripPeriod(is)
+
+simpleId :: [Inline] -> String
+simpleId inlines = Text.Pandoc.Shared.uniqueIdent (stripPeriod inlines) []
+
 headerize :: [Block] -> [Block] -- create header for lightweight sections.
 headerize ((Para ((Strong inlines):content)):blocks) = 
   let 
-    (types, title) = split inlines
+    (types, title) = split (stripPeriod inlines)
     cls = getClasses types
     attr = [] 
   in 
-    (headerSeparatorNazi (Header 6 ("", cls, attr) inlines)) : (Para content) : blocks
+    (headerSeparatorNazi (Header 6 (simpleId inlines, cls, attr) inlines)) : (Para content) : blocks
 headerize ((Para content):blocks) = 
   (headerSeparatorNazi (Header 6 ("", [], []) [])) : (Para content) : blocks
 headerize x = x
@@ -247,13 +263,7 @@ start _ = False -- TODO: think more about this (figures, formulas, etc)
 get_types :: [Inline] -> [String]
 get_types (Str(type_):_) = [type_] 
 
-strip_period :: [Inline] -> [Inline]
-strip_period [Str string] = 
-  case isSuffixOf "." string of
-    True -> [Str ((reverse . tail. reverse) string)]
-    False -> [Str string]
-strip_period [i] = [i]
-strip_period (i:is) = i:strip_period(is)
+
 
 --kosher :: Char -> Bool
 --kosher '-' = True
