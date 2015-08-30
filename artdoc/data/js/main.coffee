@@ -8,40 +8,35 @@
 
 # Generic Helpers
 # ==============================================================================
-type = (item) -> 
-  Object::toString.call(item)[8...-1].toLowerCase();
+type = (item) ->
+  toString = Object::toString.call
+  toString(item)[8...-1].toLowerCase()
 
 # Method Observers
 # ==============================================================================
-
-# Mix into your object prototype to enable method observers.
-connect = (source, target) ->
-  source = source.name if source.name?
-
-  this._targets or= {}
-  targets = this._targets[source] or= []
-  targets.push target
-  
-  method = this[source]
-  if not method._connected?
-    new_method = (args...) =>
-      output = method.call(this, args...)
-      for target in targets
-        target(this, args...)
-      return output 
-    new_method._connected = on
-    this[source] = new_method
-
-  return undefined
+connect = (links) ->
+  all_targets = this._targets ?= {}
+  for name, target of links
+    targets = all_targets[name] ?= []
+    targets.push target
+    method = this[name]
+    if not this[name]._connected?
+      do (name, method) =>
+        new_method = (args...) =>
+          output = method.call(this, args...)
+          for _target in this._targets[name]
+            _target(this, args...)
+          return output 
+        new_method._connected = on
+        this[name] = new_method
+  return this
 
 # Icons
 # ==============================================================================
-
 extend = (base, diff) ->
   for k, v of diff
     bv = base[k]
-    if k is "style" and bv? and type(v) is "object" # TODO: raise type error 
-      # instead of doing smthin stupid when this is not an object
+    if k is "css" and bv?
       extend(bv, v)
     else if k is "class" and bv?
       base[k] = [base[k], v].join(" ")
@@ -49,31 +44,20 @@ extend = (base, diff) ->
       base[k] = v
   return base
 
+configure = (html, options) ->
+  options ?= {}
+  html.attr("id", options.id) if options.id?
+  html.addClass(options.class) if options.class?
+  html.css(options.css) if options.css?  
 
-# for the style, work with selector/style pairs instead to be able to
-# reach inside nested components ? (and actually keeping most of the
-# power of cascading style sheets ?). Actually, we could accept both
-# styles (distinguish on the type, array or object). Argh, the
-# diffing algo for the extension is likely to become a pure mess.
-# And there is no graceful way to specify nesting either right ?
-# I mean, could probably do something with a style in a style and
-# somehow concatenate selectors, bit it would be brittle and complex.
-class Component
-  constructor: (options) ->
-    if this.html? # error if undefined ?
-      this.html.attr("id", options.id) if options.id?
-      this.html.addClass(options.class) if options.class?
-      this.html.css(options.style) if options.style?  
-
-# TODO: define a configure static method instead of the constructor ?
-#       Sure thing. Then, let go of the whole Component base class idea ?
-#       Ask for an explicit html argument so that they will be no temptation
-#       to call the stuff before html actually exists.
-
-class Icon extends Component
+class Icon
   constructor: (type, options) ->
     this.html = html = $("<i></i>", class: "fa fa-" + type)
-    super options
+    configure this.html, extend(Icon.defaults(), options)
+
+  this.defaults = () ->
+    css:
+      fontSize: "1em"
 
   spin: (status = on) ->
     if status
@@ -81,85 +65,120 @@ class Icon extends Component
     else
       this.html.removeClass "fa-spin"
 
-# tmp
-#start = undefined
-
+# TODO: should be a generic loader and MathJax related behavior externalized
+#       Spinning behavior should also *probably* be defined here, not at the
+#       icon level.
 class MathJaxLoader extends Icon
   constructor: (options) ->
     options = extend MathJaxLoader.defaults(), options
     super "cog", options
     this.spin()
-
-    # tmp ------------------------------------------------------------------------
-#    MathJax.Hub.signal.Interest (msg) -> 
-#      if not start?
-#        start = (new Date()).valueOf()
-#      if msg[0] is "New Math Pending"
-#        console.log "MathJax: New Math Pending"
-#      else if msg[0] is "New Math"
-#        console.log "MathJax: New Math"
-#      else
-#        console.log "MathJax:", msg
-#      if msg[0] is "End Process"
-#        console.log "MathJax run:", ((new Date()).valueOf() - start) / 1000, "sec"
-    # ----------------------------------------------------------------------------
-
-    # this component, like, you know, removes itself when done ???
     MathJax.Hub.Register.StartupHook "End", => this.html.remove()
 
   this.defaults = () ->
     class:
       "mathjax-loader"
-    style:
-      fontSize: "1em" 
-      position: "fixed"
-      top: "50%"
-      left: "1em"
 
-# Table of Contents
-# ==============================================================================
+  debug: ->
+    MathJax.Hub.signal.Interest (msg) -> 
+      console.log "MathJax:", msg[0]
 
-# Q: accept html argument to the constructor instead (the icons ?)
-# Q: generic configurability ? (id, class, style ?) 
+# Overlay
+# ------------------------------------------------------------------------------
+class Overlay
 
-class Switch extends Component
-  constructor: (@typeOn = "bars", @typeOff = "times", options) ->
+# Switch Button
+# ------------------------------------------------------------------------------
+class Switch
+  constructor: (typeOff = "bars", typeOn = "times", options) ->
+    this.typeOn = typeOn
+    this.typeOff = typeOff
     this.html = $("<i></i>", class: "fa")
     this.off()
-    super options
+    configure this.html, (extend Switch.defaults(), options)
+    this.html.on "click": => this.toggle()
+
+  this.defaults = () ->
+    class:
+      "switch"
+    css:
+      fontSize: "1em"
+      cursor: "pointer"
 
   connect: connect
 
-  on: ->
+  on: =>
     this.html.removeClass("fa-" + this.typeOff).addClass("fa-" + this.typeOn)
     this.status = on
 
-  off: ->
+  off: =>
     this.html.removeClass("fa-" + this.typeOn).addClass("fa-" + this.typeOff)
     this.status = off
 
-  toggle: (status = undefined) ->
+  toggle: (status = undefined) =>
     status ?= not this.status
-    if status is on this.on() else this.off()
+    if status is on 
+      this.on() 
+    else 
+      this.off()
 
-make_toc = (root) ->
-  root ?= $("body")
-  toc = $("<div></div>")
-  header = root.children("header")
-  if header.length == 0
-    header = root
-  heading = header.children("h1, h2, h3, h4, h5, h6")
-  if heading.length
-    item = $("<p>" + heading.first().html() + "</p>")
-    item.appendTo(toc)
-  sections = root.children("section")
-  if sections.length
-    list = $("<ul></ul>")
-    list.appendTo(toc)
-    sections.each (index, section) -> 
-      (make_toc $(section)).appendTo(list)
-  toc.addClass("toc")
-  return toc
+# Table of Contents
+# ------------------------------------------------------------------------------
+TOC = class TableOfContents
+  constructor: (options) ->
+    this.html = $("<nav></nav>")
+    this.html.append TOC.getOutline()
+    
+    configure this.html, options
+
+    this.html.show()
+
+  show: =>
+    this.html.css display: "block"
+    this.html.focus()
+
+  hide: =>
+    this.html.css display: "none"
+
+  this.getOutline = (root = undefined, type = "ul") ->
+    root ?= $("body")
+    list = $("<#{type}></#{type}>")
+
+    headers = root.children("header")
+    if headers.length == 0
+      headers = root
+    headings = headers.children("h1, h2, h3, h4, h5, h6")
+    if headings.length
+      item = $("<p>" + headings.first().html() + "</p>")
+      item.appendTo(list)
+
+    sections = root.children("section")
+    if sections.length
+      subList = $("<#{type}></#{type}>")
+      subList.appendTo(list)
+      sections.each (index, section) -> 
+        (TOC.getOutline $(section), type).appendTo(subList)
+
+    return list
+
+#make_toc = (root) ->
+#  root ?= $("body")
+#  toc = $("<div></div>")
+#  header = root.children("header")
+#  if header.length == 0
+#    header = root
+#  heading = header.children("h1, h2, h3, h4, h5, h6")
+#  if heading.length
+#    item = $("<p>" + heading.first().html() + "</p>")
+#    item.appendTo(toc)
+#  sections = root.children("section")
+#  if sections.length
+#    list = $("<ul></ul>")
+#    list.appendTo(toc)
+#    sections.each (index, section) -> 
+#      (make_toc $(section)).appendTo(list)
+#  toc.addClass("toc")
+#  return toc
  
 # This conflates two things: the change in the state of the button and looks
 # which should be internal to the Button, and the consequence on the TOC,
@@ -178,39 +197,37 @@ toc_switch = (status=undefined) ->
     $("body").css(overflow: "auto")
     $("#hamburger").removeClass("fa-times").addClass("fa-bars")
 
-Hamburger = ->
-  $("body").on "click", "#hamburger", (event) -> toc_switch()
-  hamburger = $ "<i>", 
-                id: "hamburger",
-                class: "fa fa-bars",
-                css:
-                  fontSize: "1em" 
-                  position: "fixed"
-                  top: "1em"
-                  left: "1em"
-                  cursor: "pointer"
-                  zIndex: 200
+# TODO: opacity (grey) on top of the document, shifted to the right.
+#       change of the cursor when we hower on top of this part with
+#       a cross, clicking does collapse the TOC.
 
-install_toc = () ->
-  $("body").prepend Hamburger()
-  $(".overlay").append make_toc()
-  $(".toc a").on "click", (event) -> 
-    toc_switch(off)
-    true
+# TODO: solve the navigation in TOC pb (need to be able to scroll).
+
+# TODO: management of selected section.
+
+setupTOC = () ->
+  topLeft = 
+    css: {position: "fixed", top: "1em", left: "1em", zIndex: 200}
+  hamburger = new Switch "bars", "times", topLeft
+  $("body").prepend hamburger.html
+
+  toc = new TableOfContents css: 
+    position: "fixed",
+    top: 0
+    left: 0
+    zIndex: 0
+    backgroundColor: "yellow"
+    paddingLeft: "2em"
+  $("body").append toc.html
+
+  hamburger.connect(on: toc.show, off: toc.hide).off()
+
+  # debug
+  window.hamburger = hamburger
+  window.toc = toc
+
 
 # ------------------------------------------------------------------------------
-
-switchOutline = (status) ->
-  details = $(".remark, .theorem, .definition, .proof, .example, .generic, .footnotes")
-  if status
-    off
-    # set the elements heights to their computed heights
-    #details.each (i, elt) -> 
-    #  $(elt).css {height: $(elt).height() / 2}
-    # animate
-    # details.animate {height: 0}, 2400
-  #else 
-    # err ... fuck. Memorize the height ? What if the context has changed ?
 
 testAnim = () ->
    duration = 1200
@@ -290,21 +307,14 @@ smoothLinks = ->
         easing: "easeOutCubic",
       return false
 
-Overlay = -> $ "<div>",
-    class: "overlay" 
-    css:
-      display: "none"
-      position: "fixed"
-      top: "0px"
-      backgroundColor: "white"
-      opacity: "1.0"
-      zIndex: 100
-
 $ ->
   body = $("body")
-  body.append Overlay()
-  body.prepend (new MathJaxLoader).html
-  install_toc()
+
+  middleLeft = 
+    css: {position: "fixed", top: "50%", left: "1em"}
+  body.prepend (new MathJaxLoader middleLeft).html
+
+  setupTOC()
 
   smoothLinks()
   
