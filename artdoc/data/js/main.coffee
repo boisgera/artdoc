@@ -544,33 +544,40 @@ highlight = ->
 
 #<http://www.adriantomic.se/development/jquery-localscroll-tutorial/>
 smoothLinks = ->  
-  $("a[href*=#]:not([href=#])").click ->
-
-    #console.log "*"
-
+  $("a[href*=#]:not([href=#])").click (event) ->
     if location.pathname.replace(/^\//,'') is this.pathname.replace(/^\//,'') and
        location.hostname is this.hostname
 
-      target = $(this.hash)
-
-
       # need to reach the holder with a scrollbar (here hardcoded)
-      wrapper = $("main").parent().parent() 
-      wrapper.animate
-        scrollTop: wrapper.scrollTop() + target.offset().top,
+      holder = $("main").parent().parent() 
+      target = $(this.hash)
+      holder.animate
+        scrollTop: holder.scrollTop() + target.offset().top
       ,    
         duration: 600, 
         easing: "swing"
-        complete: undefined #=> location.hash = this.hash
 
-      # setting the location is too aggressive, it focuses on the main
-      # panel ; try something else.
+      # BUG: setting the location hash (directly or via pushState) "focuses"
+      #      on the target ... including horizontally somehow, which is a pain
+      #      in the ass ... Maybe I could set the lateral scroll just after
+      #      the location change just to invert the move ? Or "defuse" the id.
+      hash = this.hash
+      target = $(hash)
+      target.attr id: "__" + hash[1...] + "__"
+      empty = HTML.div
+        id: hash[1...]
+        css:
+          position: "fixed"
+          visibility: "hidden"
+      $("body").append here
+      location.hash = hash # Aah, nowhere to go now ! Shit, the bastard 
+      # remembers the previous location ...
+      empty.remove()
+      target.attr id: hash[1...]
+      
+      #baseUrl = location.toString()[...location.hash.length]
+      #window.history.pushState {}, "", baseUrl + this.hash
 
-
-
-#      target.velocity "scroll",
-#        duration: 600,
-#        easing: "easeOutCubic",
       return false
 
 $ ->
