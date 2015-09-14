@@ -9,6 +9,7 @@ import Text.Pandoc
 import Text.Pandoc.JSON
 
 -- TODO: output type (writer name) for fields that contain some Pandoc content.
+-- TODO: need to specify HTML writer options (namely: set email obfuscation to none)
 
 type StringWriter = WriterOptions -> Pandoc -> String
 
@@ -37,11 +38,18 @@ wrapBlocks blocks = Pandoc noMeta blocks
 wrapInlines :: [Inline] -> Pandoc
 wrapInlines inlines = wrapBlocks [Plain(inlines)]
 
+customWriteHtmlString :: WriterOptions -> Pandoc -> String
+customWriteHtmlString options doc = let
+    options' = options {writerEmailObfuscation = NoObfuscation}
+  in
+    writeHtmlString options' doc
+
+
 main :: IO ()
 main = do  
     args <- getArgs
     filename <- return (args !! 0)
     txt <- readFile filename
     doc <- return (readMarkdown def txt)
-    putStrLn (encode (jsConvert doc writeHtmlString))
+    putStrLn (encode (jsConvert doc customWriteHtmlString))
 

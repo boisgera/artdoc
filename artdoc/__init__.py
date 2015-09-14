@@ -308,7 +308,8 @@ def main():
         json_str = (cmd << json_str)()
 
         info("Generate HTML body from markdown")
-        args = ["-f", "json", 
+        args = ["--email-obfuscation", "none",
+                "-f", "json", 
                 "--mathjax", 
                 "-t", "html5", "--section-divs"]
         cmd = pandoc[args]
