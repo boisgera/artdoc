@@ -50,6 +50,7 @@ main = do
     args <- getArgs
     filename <- return (args !! 0)
     txt <- readFile filename
-    doc <- return (readMarkdown def txt)
-    putStrLn (encode (jsConvert doc customWriteHtmlString))
+    doc <- return (readMarkdown def txt) -- now doc is Either Text.Pandoc.Error.PandocError Pandoc
+    let Right doc' = doc
+    putStrLn (encode (jsConvert doc' customWriteHtmlString))
 

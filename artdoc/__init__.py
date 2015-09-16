@@ -13,7 +13,7 @@ import re
 import shutil
 import sys
 import tempfile
-import urllib
+import urllib2
 import zipfile
 
 # Third-Party Libraries
@@ -67,7 +67,12 @@ def parse_html(text=None):
 def google_fonts(font_names, standalone=False):
     GOOGLE_API_KEY = "AIzaSyCXe6WAu7i4CYL9ee-RFNZirObwT4zJyqI"
     url = "https://www.googleapis.com/webfonts/v1/webfonts"
-    info = json.loads(urllib.urlopen(url + "?key=" + GOOGLE_API_KEY).read())
+    https_proxy = os.environ.get("https_proxy")
+    if https_proxy is not None:   
+        proxy_support = urllib2.ProxyHandler({"https": https_proxy})
+        opener = urllib2.build_opener(proxy_support)
+        urllib2.install_opener(opener)
+    info = json.loads(urllib2.urlopen(url + "?key=" + GOOGLE_API_KEY).read())
     if standalone:
         css = ""
         css_template = \
@@ -158,7 +163,7 @@ def artdoc():
 def mathjax(url="http://cdn.mathjax.org/mathjax/latest/MathJax.js",
             zip_url="https://github.com/mathjax/MathJax/archive/master.zip", 
             config="TeX-AMS_HTML", 
-            extra={"HTML-CSS": {"scale": 90},
+            extra={"HTML-CSS": {"scale": 90, "availableFonts": ["TeX"], "preferredFont": "TeX"},
                    "TeX": {"equationNumbers": {"autoNumber": "AMS"}}},
             standalone=False):
     if standalone:
