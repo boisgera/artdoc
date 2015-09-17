@@ -38,19 +38,19 @@ wrapBlocks blocks = Pandoc noMeta blocks
 wrapInlines :: [Inline] -> Pandoc
 wrapInlines inlines = wrapBlocks [Plain(inlines)]
 
-customWriteHtmlString :: WriterOptions -> Pandoc -> String
+customWriteHtmlString :: StringWriter
 customWriteHtmlString options doc = let
     options' = options {writerEmailObfuscation = NoObfuscation}
   in
     writeHtmlString options' doc
 
-
 main :: IO ()
 main = do  
     args <- getArgs
-    filename <- return (args !! 0)
+    let filename = (args !! 0)
     txt <- readFile filename
-    doc <- return (readMarkdown def txt) -- now doc is Either Text.Pandoc.Error.PandocError Pandoc
-    let Right doc' = doc
-    putStrLn (encode (jsConvert doc' customWriteHtmlString))
+    let maybeDoc = readMarkdown def txt
+    case maybeDoc of
+      Left pandocError -> error (show pandocError)
+      Right doc -> putStrLn (encode (jsConvert doc customWriteHtmlString))
 
