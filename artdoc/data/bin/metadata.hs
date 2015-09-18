@@ -36,6 +36,8 @@ wrapBlocks blocks = Pandoc noMeta blocks
 wrapInlines :: [Inline] -> Pandoc
 wrapInlines inlines = wrapBlocks [Plain(inlines)]
 
+-- same comment here: typeclass for stuff that can be converted to JSON ?
+-- (metavalue and pandoc). Overkill ?
 toJSON :: MetaValue -> StringWriter -> JSValue
 toJSON (MetaMap map) writer = JSObject (toJSObject (Prelude.map convert (toList map)))
   where convert (k, v) = (k, toJSON v writer)  
@@ -50,8 +52,11 @@ toJSON (MetaBlocks blocks) writer = JSString (toJSString string)
 jsConvert :: Pandoc -> StringWriter -> JSValue
 jsConvert (Pandoc Meta{unMeta=meta} blocks) writer = toJSON (MetaMap meta) writer 
 
+readerOptions :: ReaderOptions -- hard-coded :(
+readerOptions = def { readerSmart = True}
+
 writerOptions :: WriterOptions -- hard-coded :(
-writerOptions = def {writerEmailObfuscation = NoObfuscation}
+writerOptions = def { writerEmailObfuscation = NoObfuscation }
 
 main :: IO ()
 main = do  
@@ -61,7 +66,7 @@ main = do
        let filename = (args !! 0)
        txt <- readFile filename
 
-       let maybeDoc = readMarkdown def txt
+       let maybeDoc = readMarkdown readerOptions txt
        let doc = case maybeDoc of (Left pandocError) -> error (show pandocError)
                                   (Right doc') -> doc'
 

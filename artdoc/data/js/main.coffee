@@ -131,7 +131,6 @@ class Component
         child = $(child)
       # TODO: accept arrays of DOM Nodes ?
       else if not (child instanceof jQuery)
-        console.log "error", tag, attributes, children
         throw "invalid child."
       new_children.push child
     return [attributes, new_children]
@@ -255,7 +254,6 @@ HTML class Panels extends Component # TODO: rename "Deck" ? # Shit, needs some j
     divs = []
 
     for item, i in items
-      console.log "item", item
       divs.push HTML.div(css: css(), item)
 
     this.$.append HTML.div
@@ -582,13 +580,16 @@ highlight = ->
 # TODO: measure the distance & take more time if we are far (~constant speed).
 
 #<http://www.adriantomic.se/development/jquery-localscroll-tutorial/>
-smoothLinks = ->  
+manageLinks = ->  
   $("a[href*=#]:not([href=#])").click (event) ->
     if location.pathname.replace(/^\//,'') is this.pathname.replace(/^\//,'') and
        location.hostname is this.hostname
 
-      # need to reach the holder with a scrollbar (here hardcoded)
-      holder = $("main").parent().parent() 
+      # need to reach a holder in the hierarchy that has a scrollbar
+      holder = $("main").parent()
+      if not (holder.css("overflowY") in ["scroll", "auto"])
+        throw "main holder has no scroll"
+
       target = $(this.hash)
       holder.animate
         scrollTop: holder.scrollTop() + target.offset().top
@@ -634,7 +635,7 @@ $ ->
     css: {position: "fixed", top: "50%", left: "1em"}
   body.prepend HTML.MathJaxLoader(middleLeft).$
 
-  smoothLinks()
+  manageLinks()
   
   styleText()
 
