@@ -461,7 +461,7 @@ def main():
             if name is not None:
                 if email is not None:
                     name = [HTML.a({"href": "mailto:" + email[0]}, *name)]
-                name = HTML.h2({"class": "author"}, *name)
+                name = HTML.p({"class": "author"}, *name)
                 items.append(name)
                 if affiliation is not None:
                     affiliation = HTML.p({"class": "affiliation"}, *affiliation)

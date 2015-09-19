@@ -16,9 +16,59 @@
 # CSS Reset
 # ==============================================================================
 reset = ->
-  $("html, body").css
-    margin: "0px"
-    padding: "0px"
+  style = HTML.style type:"text/css",
+    """
+    /* http://meyerweb.com/eric/tools/css/reset/ 
+       v2.0 | 20110126
+       License: none (public domain)
+    */
+
+    html, body, div, span, applet, object, iframe,
+    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+    a, abbr, acronym, address, big, cite, code,
+    del, dfn, em, img, ins, kbd, q, s, samp,
+    small, strike, strong, sub, sup, tt, var,
+    b, u, i, center,
+    dl, dt, dd, ol, ul, li,
+    fieldset, form, label, legend,
+    table, caption, tbody, tfoot, thead, tr, th, td,
+    article, aside, canvas, details, embed, 
+    figure, figcaption, footer, header, hgroup, 
+    menu, nav, output, ruby, section, summary,
+    time, mark, audio, video {
+	    margin: 0;
+	    padding: 0;
+	    border: 0;
+	    font-size: 100%;
+	    font: inherit;
+	    vertical-align: baseline;
+    }
+    /* HTML5 display-role reset for older browsers */
+    article, aside, details, figcaption, figure, 
+    footer, header, hgroup, menu, nav, section {
+	    display: block;
+    }
+    body {
+	    line-height: 1;
+    }
+    ol, ul {
+	    list-style: none;
+    }
+    blockquote, q {
+	    quotes: none;
+    }
+    blockquote:before, blockquote:after,
+    q:before, q:after {
+	    content: '';
+	    content: none;
+    }
+    table {
+	    border-collapse: collapse;
+	    border-spacing: 0;
+    }
+    """
+  $("html head").append style
+
 
 # Typography
 # ==============================================================================
@@ -37,10 +87,14 @@ styleText = ->
     fontFamily: "Alegreya, serif"
     fontSize: fontSize.medium
     fontWeight: "normal"
+    lineHeight: 1.5
     textAlign: "justify"
     textRendering: "optimizeLegibility"
     hyphens: "auto"
     MozHyphens: "auto"
+
+  $("h1, h2, h3").css
+    margin: "0.5em 0em 0.5em 0em"
 
   $("h1").css
     fontSize: fontSize.xLarge
@@ -59,23 +113,21 @@ styleText = ->
       fontWeight: "bold"
       float: "left"
       marginRight: "1em"
-      marginTop: "0px"
-      marginBottom: "0px"
-
-#      &::after
-#        content: "."
-
-
+      marginTop: "0em"
+      marginLeft: "0em"
+      marginBottom: "0em"
 
   $("h1", "main header").css 
     fontSize: fontSize.huge
     fontWeight: "bold"
 
-  $("h2", "main header").css
+  $(".author", "main header").css
     fontSize: fontSize.xLarge
     fontWeight: "bold"
 
-  
+  $("p").css
+    marginTop: "1em"
+    marginBottom: "1em"
 
   return undefined
 
@@ -141,7 +193,7 @@ class Component
 HTML = (cls) -> # add Component classes as factories the HTML namespace.
   HTML[cls.name] = (args...) -> new cls(args...)
 
-for tag in "a aside body div em h1 h2 h3 h4 h5 i main nav p span strong".split(" ")
+for tag in "a aside body div em h1 h2 h3 h4 h5 head html i main nav p span strong style".split(" ")
   HTML[tag] = do (tag) ->
     (args...) ->
       (new Component(tag, args...)).$
@@ -247,6 +299,7 @@ HTML class Panels extends Component # TODO: rename "Deck" ? # Shit, needs some j
 
     css = ->
       width: "100%", height:"100%",
+      padding: "0px"
       overflowY: "scroll"
       overflowX: "hidden"
       position: "absolute",
@@ -323,97 +376,83 @@ HTML class Switch extends Component
 
 # Table of Contents
 # ------------------------------------------------------------------------------
+
+# TODO: update the style (background) of the active section, maybe autofocus.
+
 HTML class TOC extends Component
   constructor: (options) ->
     root = options.root
     options.root = undefined
 
-    super "nav", options
+    super "div", options
 
-    this.$.append HTML.nav TOC.outline(root)
+    this.$.css overflow: "hidden"
+    this.$.append HTML.h1 "Contents"
+    this.$.append this.nav = HTML.nav (TOC.outline(root))
+
+    this.style()
     this.show()
+
+  style : =>
+    $("li", this.nav).css 
+      listStyleType: "none"
+      margin: "0px"
+
+    anchors = $("a", this.nav)
+    anchors.css display: "block"
+    anchors.mouseenter -> $(this).css backgroundColor: "#a0a0a0"
+    anchors.mouseleave -> $(this).css backgroundColor: ""
+
+    indent = (root, level) =>
+      root ?= this.nav.find("ul").first()
+      level ?= 0
+      isTree = (elt) -> (elt.children().first().prop("tagName") is "UL")
+      root.children("li").each (index, elt) ->
+        if isTree $(elt)
+          ul = $(elt).children().first()
+          indent ul, (level + 1)
+        else
+          $(elt).children().first().css paddingLeft: 1.5 * level + "em"
+
+    indent()
+
+    $("a", this.nav).css
+      textDecoration: "none"       
+
+  # need to hook that to link click :(
+  focus: => # find the active section, change the style accordingly
+    hash = window.location.hash
+    anchor = this.nav.find("a[href='#{hash}']")
+    anchor.css backgroundColor: "white" 
+    # this is going to be overwritten at the first occasion do something else.
 
   show: =>
     this.$.css display: "block"
-    this.$.focus()
 
   hide: =>
     this.$.css display: "none"
 
   # Remark: we rely ONLY on section tags for nesting, not headings levels.
-  # Q: question the quite deeply nested ul/li design.
   this.outline = (root = undefined) ->
     root ?= $("body")    
-
-    #console.log "root", root, root.children()
-
     list = $("<ul></ul>")
     root.children().each ->
       tag = this.nodeName.toLowerCase()
-      #console.log "tag", tag
       if tag in "h1 h2 h3 h4 h5 h6".split(" ")
         text = $(this).html()
-        #console.log tag, text
-        list.append $("<li><p>#{text}</p></li>") if text
-        #console.log "list", list.prop("outerHTML")
+        list.append $("<li>#{text}</li>") if text
       else if tag is "header"
-        #console.log "header"
         outline = TOC.outline $(this)
-        #console.log "outline first:", outline.first().prop("outerHTML")
-        list.append outline.children().first() # How can that fuck the whole execution ?
+        list.append outline.children().first()
         list.append outline.children().clone()
-        #outline.each -> list.append $(this)
       else if tag is "div"
-        #console.log "div"
         outline = TOC.outline $(this)
         list.append outline.children() if outline.children().length > 0
       else if tag is "section"
         outline = TOC.outline $(this)
         list.append $("<li></li>").append(outline) if outline.children().length > 0
-    #console.log "list", list
     return list
 
-#    headers = root.children("header")
-#    if headers.length == 0
-#      headers = root
-#    headings = headers.children("h1, h2, h3, h4, h5, h6")
-#    if headings.length
-#      item = $("<p>" + headings.first().html() + "</p>")
-#      item.appendTo(list)
-
-#    sections = root.children("section")
-#    if sections.length
-#      subList = List
-#      subList.appendTo(list)
-#      sections.each (index, section) -> 
-#        (TOC.getOutline $(section), type).appendTo(subList)
-
-
-#make_toc = (root) ->
-#  root ?= $("body")
-#  toc = $("<div></div>")
-#  header = root.children("header")
-#  if header.length == 0
-#    header = root
-#  heading = header.children("h1, h2, h3, h4, h5, h6")
-#  if heading.length
-#    item = $("<p>" + heading.first().html() + "</p>")
-#    item.appendTo(toc)
-#  sections = root.children("section")
-#  if sections.length
-#    list = $("<ul></ul>")
-#    list.appendTo(toc)
-#    sections.each (index, section) -> 
-#      (make_toc $(section)).appendTo(list)
-#  toc.addClass("toc")
-#  return toc
- 
-# TODO: Overlay & Closed TOC vs Pinned model and shifted content. Can I have both ?
-# TODO: how to handle TOC scrolling *in both modes* ? Is scrollin inconsistent with
-#       the fixed position approach ? Think of some inline-block stuff instead ?
-# TODO: clean Overlay & Close solution first (with scroll solved), think of pinned later ?
-#       Search for classic two-column solutions that I could tweak (inline-box or
-#       flexbox, whatever)
 
 toc_switch = (status=undefined) ->
   overlay = $(".overlay")
@@ -428,45 +467,9 @@ toc_switch = (status=undefined) ->
     $("body").css(overflow: "auto")
     $("#hamburger").removeClass("fa-times").addClass("fa-bars")
 
-# TODO: opacity (grey) on top of the document, shifted to the right.
-#       change of the cursor when we hower on top of this part with
-#       a cross, clicking does collapse the TOC.
-
-# TODO: solve the navigation in TOC pb (need to be able to scroll).
-
-# TODO: management of selected section.
-
-# TODO: the toc should belong to an overlay that may partially hide the content.
-
-#_setupTOC = () ->
-#  # specil treatment for the top-level header ?
-#  content = $("<div></div>", class: "content").append $("body").children()
-#  $("body").append content
-
-#  topLeft = 
-#    css: {position: "fixed", top: "1em", left: "1em", zIndex: 900}
-#  hamburger = new Switch "bars", "times", topLeft
-#  $("body").prepend hamburger.html
-
-#  toc = new TOC css: 
-#    position: "fixed",
-#    top: 0
-#    left: 0
-#   #zIndex: 200
-#    backgroundColor: "white"
-#    #border: "1px solid black"
-#    paddingLeft: "2em"
-#  $("body").prepend toc.html
-
-#  hamburger.connect(on: toc.show, off: toc.hide).off()
-
-#  # debug
-#  window.hamburger = hamburger
-#  window.toc = toc
 
 setupTOC = () ->
-
-  # Transfer the body contents from body to main
+  # Transfer the body contents to main
   main = HTML.main 
     css:
       margin: "auto"
@@ -475,9 +478,12 @@ setupTOC = () ->
       height: "auto" 
     $("body").children()
 
-  # Add the hambuger button.
-  topLeft = {position: "fixed", top: "1em", left: "1em", zIndex: 999}
-  hamburger = HTML.Switch typeOff: "bars", typeOn: "times", css: topLeft
+  # Add the hamburger button.
+  topLeftCorner = 
+    position: "fixed", 
+    top: "1em", 
+    left: "1em", zIndex: 999
+  hamburger = HTML.Switch typeOff: "bars", typeOn: "times", css: topLeftCorner
   $("body").prepend hamburger.$
 
   # Create the table of contents
@@ -485,12 +491,9 @@ setupTOC = () ->
     root: 
       main
     css: 
-      position: "fixed"
-      top: 0
-      left: 0
-      backgroundColor: "white"
-      paddingLeft: "2em"
-  
+      paddingLeft: "5em"
+      backgroundColor: "#f0f0f0"
+
   # Setup the TOC / content panel and wire with the button
   panel = HTML.Panels
     css:
@@ -503,81 +506,19 @@ setupTOC = () ->
 
   $("body").append panel.$
 
+  # table of contents: close on click
+  $("a", toc.$).on "click", -> hamburger.off()
+
   hamburger.connect
     on: -> panel.setIndex 0
     off: -> panel.setIndex 1
+
+  hamburger.connect 
+    on: -> toc.focus() # hook in a better place (refactor anchor click callbacks)
+
   hamburger.off()
 
 
-
-
-# ------------------------------------------------------------------------------
-
-testAnim = () ->
-   duration = 1200
-   # This removal is not that bad, but it does interfere with the margin collapse
-   # of the elements just before and after (if any), making them look too far apart.
-   # also, that's funny, just when I click, some elements (not all ?) are translated
-   # to the bottom. Why is that ? Ah, that may be the overflow hidden trigger that
-   # does stuff with the margins (does not the p margins to go beyond the div extent)
-   # Yes: now that we don't allow "content" to go beyond the div, the margin used
-   # for the ps just finds it way inside the div, effectively creating an extra margin.
-   # (this margin is not collapsable anymore).
-   # Could we compute the new height after overflow: hidden and compensate for it ?
-   # Or directly find a way to compensate beforehand, but "it depends" on the context.
-   # Could we "transfer" the margin if the first element of the div to the div itself ?
-   # (and compensate inside with a negative padding ?)
-   # and same thing for the last one ? Mmmm maybe ...
-   elts = $(".remark, .theorem, .definition, .proof, .example, .generic, .footnotes")
-   elts.each (i, elt) ->
-     elt = $(elt)
-     elt.on "click", (event) ->
-       firstChild = elt.children().first()
-       marginTop = firstChild.css("margin-top")
-       lastChild = elt.children().last()
-       marginBottom = lastChild.css("margin-bottom")
-       firstChild.css
-         marginTop: "0px"
-       lastChild.css
-         marginBottom: "0px"
-       elt.css 
-         overflow: "hidden", 
-         height: elt.height(), 
-         marginTop: marginTop
-       console.log "1st step"
-       elt.animate 
-         height: 0,
-       ,
-         duration: duration, 
-         complete: ->
-           console.log "2nd step"
-           elt.animate 
-             marginTop: 0, 
-             marginBottom: 0,
-           , 
-             duration: duration,
-             complete: -> console.log "done"
- 
-       # does not work, read https://learn.jquery.com/effects/queue-and-dequeue-explained/
-
-       # TODO: make the animation scroll at a constant speed (the longer the
-       # div, the longer the animation)
-
-       # TODO: when done, animate remaining margins into oblivion ?
-       # Well, there is the "constant speed" issue and then, there is STILL
-       # the collapsing margin issue ... we may need to compensate for the 
-       # presence of the block by setting negative margins.
-
-       # TODO: have a look at jquery plugins wrt animations
-
-highlight = ->
-  selection = window.getSelection()
-  console.log selection 
-
-  
-# this is ugly, try another easing or JQuery animate. Do manual shit with
-# requestAnimationFrame instead ?
-# TODO: measure the distance & take more time if we are far (~constant speed).
 
 #<http://www.adriantomic.se/development/jquery-localscroll-tutorial/>
 manageLinks = ->  
