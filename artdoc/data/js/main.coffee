@@ -138,31 +138,53 @@ type = (item) ->
 
 # Component Model
 # ==============================================================================
+#   
+# Basics:
 #
-# Should be "similar" in usage to native HTML.div, HTML.p, etc. factories that
-# return jQuery objects:
-#   - the classes may declare additional, stateful methods (show, click, etc.)
-#   - classes are added to the HTML namespace as factories (no new).
-#   - they have a "jQuery" or "elt(s)" method or attribute (?) that gives the content.
-#     (html is already used) (think of static vs dynamic issue).
-#   - the HTML builder recognizes such components and automatically converts
-#     them to jquery,
-#   - when they require jquery arguments in their constructor, the components
-#     should also perform automatically this conversion. They don't have to
-#     keep the same options, children constructor conventions ... but it could
-#     be handy, the options to children stuff should therefore be normalized.
-#     See for example TOC: it needs a root, that does not fit in the model
-#     (unless we put that in the options and remove the root field before the
-#     processing by the ancestor ? makes sense).
-
+#   - Components represent (arrays of) HTML elements, logic and data.
+#     Think of it as a (lightweight) extension of the jQuery object.
+# 
+#   - Use the HTML factories to create components:
+#
+#         a = HTML.a href: "http://coffeescript.org/" 
+#
+#         header = HTML.header(HTML.h1 "Title", HTML.h2 "Subtitle")
+#
+#         p = HTML.p "I can't feel my legs"
+#
+#   - The `$` attribute enables the use of components with jQuery:
+#
+#         $("body").prepend header.$
+#
+#     Additionally, jQuery objects can be used directly in HTML factories.         
+#
+#   - Custom components encapsulate logic and data:
+#
+#         switch = HTML.SwitchButtonButton() 
+#         switch.toggle(on)
+#         console.log "Turned on ?", switch.status
+#
+# TODO:
+#
+#   - embed a reference to the component inside the jQuery object.
+#     Use data attributes. What name ? (Short would be nice ... "co" ?)
+#     Yeah, let's try "co" for a while ...
+#
+#   - document how most component accept custom constructor arguments AND
+#     usually some (possibly filtered) native ones. Describe how to handle
+#     nesting with custom components ? (Still fuzzy in my head)
+#
+#   - mix `connect` in Component by default and explain usage (button example)
+#
 class Component
 
-  # not 100% sure a constructor is the right pattern here (given the extra tag
-  # argument).
+  # Remark: not sure a constructor is the right pattern here 
+  # (given the extra tag argument).
   constructor: (tag, attributes, children...) ->
       [attributes, children] = Component.normalize(tag, attributes, children)
       this.$ = $("<#{tag}></#{tag}>", attributes)
       this.$.append(child) for child in children
+      this.$.data "co", this
 
   this.normalize = (tag, attributes, children) ->
     attributes ?= {}
@@ -189,34 +211,20 @@ class Component
 
 
 # HTML Builder
-# ==============================================================================
 HTML = (cls) -> # add Component classes as factories the HTML namespace.
   HTML[cls.name] = (args...) -> new cls(args...)
 
+# TODO: find and exhasutive list of HTML tags in plain text.
 for tag in "a aside body div em h1 h2 h3 h4 h5 head html i main nav p span strong style".split(" ")
   HTML[tag] = do (tag) ->
     (args...) ->
       (new Component(tag, args...)).$
  
-#  HTML[type_] = do (type_) -> 
-#    (attributes, children...) ->
-#      attributes ?= {}
-#      if type(attributes) in ["array", "string"] or (attributes instanceof jQuery) or (attributes.html instanceof jQuery) 
-#        # not attributes, but content
-#        children.unshift(attributes)
-#        attributes = {}
-#      elt = $("<#{type_}></#{type_}>", attributes)
-#      for child in children
-#        if type(child) is "string"
-#          child = document.createTextNode(child)
-#        else if child.html instanceof jQuery
-#          child = child.html
-#        elt.append child
-#      return elt
-
 
 # Method Observers
 # ==============================================================================
+# 
+# Mix the connect method below into your class to enable observers.
 connect = (links) ->
   all_targets = this._targets ?= {}
   for name, target of links
@@ -236,31 +244,30 @@ connect = (links) ->
 
 # Icons
 # ==============================================================================
-extend = (base, diff) ->
-  for k, v of diff
-    bv = base[k]
-    if k is "css" and bv?
-      extend(bv, v)
-    else if k is "class" and bv?
-      base[k] = [base[k], v].join(" ")
-    else
-      base[k] = v
-  return base
-
-configure = (html, options) ->
-  options ?= {}
-  html.attr("id", options.id) if options.id?
-  html.addClass(options.class) if options.class?
-  html.css(options.css) if options.css?  
+#extend = (base, diff) ->
+#  for k, v of diff
+#    bv = base[k]
+#    if k is "css" and bv?
+#      extend(bv, v)
+#    else if k is "class" and bv?
+#      base[k] = [base[k], v].join(" ")
+#    else
+#      base[k] = v
+#  return base
+#
+#configure = (html, options) ->
+#  options ?= {}
+#  html.attr("id", options.id) if options.id?
+#  html.addClass(options.class) if options.class?
+#  html.css(options.css) if options.css?  
 
 HTML class Icon extends Component
   constructor: (options) ->
-    iconType = options.type
-    if not iconType?
+    if not options.type
       throw "undefined icon type"
+    options.class = (options.class or "") + " fa fa-#{options.type}"
     options.type = undefined
-    options.class = (options.class or "") + " fa fa-#{iconType}"
-    options.fontSize ?= "1em"
+    options.css?.fontSize ?= "1em"
     super "i", options
 
   spin: (status = on) ->
@@ -342,8 +349,9 @@ HTML class Panels extends Component # TODO: rename "Deck" ? # Shit, needs some j
 
 # Switch Button
 # ------------------------------------------------------------------------------
-HTML class Switch extends Component
+HTML class SwitchButton extends Component
   constructor: (options) ->
+    # TODO: make type an object with "on" and "off" attributes.
     this.typeOn = options.typeOn
     this.typeOff = options.typeOff
     options.typeOn = options.typeOff = undefined
@@ -483,7 +491,7 @@ setupTOC = () ->
     position: "fixed", 
     top: "1em", 
     left: "1em", zIndex: 999
-  hamburger = HTML.Switch typeOff: "bars", typeOn: "times", css: topLeftCorner
+  hamburger = HTML.SwitchButton typeOff: "bars", typeOn: "times", css: topLeftCorner
   $("body").prepend hamburger.$
 
   # Create the table of contents
