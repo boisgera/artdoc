@@ -136,6 +136,47 @@ styleText = ->
 type = (item) ->
   Object::toString.call(item)[8...-1].toLowerCase()
 
+String.prototype.capitalize = ->
+    this.charAt(0).toUpperCase() + this.slice(1)
+
+String.prototype.startsWith = (string) ->
+    this.slice(0, string.length) == string
+
+defineProperties = (prototype) ->
+  properties = {}
+  for name, function of prototype
+    if name.startsWith "get" and name isnt "get"
+      propName = a[3].toLowercase() + a[4..]
+      properties[propName] ?= {}
+      properties[propName].get = function
+    if name.startsWith "set" and name isnt "set"
+      propName = a[3].toLowercase() + a[4..]
+      properties[propName] ?= {}
+      properties[propName].set = function
+  for propName, desc of properties
+    Object.defineProperty prototype, propName, desc 
+
+# Method Observers
+# ==============================================================================
+# 
+# Mix the connect method below into your class to enable observers.
+connect = (links) ->
+  all_targets = this._targets ?= {}
+  for name, target of links
+    targets = all_targets[name] ?= []
+    targets.push target
+    method = this[name]
+    if not this[name]._connected?
+      do (name, method) =>
+        new_method = (args...) =>
+          output = method.call(this, args...)
+          for _target in this._targets[name]
+            _target(this, args...)
+          return output 
+        new_method._connected = on
+        this[name] = new_method
+  return this
+
 # Component Model
 # ==============================================================================
 #   
@@ -209,6 +250,8 @@ class Component
       new_children.push child
     return [attributes, new_children]
 
+  connect: connect
+
 
 # HTML Builder
 HTML = (cls) -> # add Component classes as factories the HTML namespace.
@@ -219,28 +262,6 @@ for tag in "a aside body div em h1 h2 h3 h4 h5 head html i main nav p span stron
   HTML[tag] = do (tag) ->
     (args...) ->
       (new Component(tag, args...)).$
- 
-
-# Method Observers
-# ==============================================================================
-# 
-# Mix the connect method below into your class to enable observers.
-connect = (links) ->
-  all_targets = this._targets ?= {}
-  for name, target of links
-    targets = all_targets[name] ?= []
-    targets.push target
-    method = this[name]
-    if not this[name]._connected?
-      do (name, method) =>
-        new_method = (args...) =>
-          output = method.call(this, args...)
-          for _target in this._targets[name]
-            _target(this, args...)
-          return output 
-        new_method._connected = on
-        this[name] = new_method
-  return this
 
 # Icons
 # ==============================================================================
@@ -261,20 +282,71 @@ connect = (links) ->
 #  html.addClass(options.class) if options.class?
 #  html.css(options.css) if options.css?  
 
+# TODO: implement all/most font awesome features from 
+#       <https://fortawesome.github.io/Font-Awesome/examples/> ?
+
 HTML class Icon extends Component
   constructor: (options) ->
-    if not options.type
+    if not _type = options.type
       throw "undefined icon type"
-    options.class = (options.class or "") + " fa fa-#{options.type}"
-    options.type = undefined
-    options.css?.fontSize ?= "1em"
+    delete options.type
+    #options.css?.fontSize ?= "1em" # really ? get rid of that.
     super "i", options
+    this.$.addClass "fa"
+    this.type = _type
 
-  spin: (status = on) ->
-    if status
-      this.$.addClass "fa-spin"
+  # Set up boolean icon properties setters & getters
+  faTags =  
+    fixedWidth: "fw"
+    list: "li"
+    pulse: "pulse"
+    spin: "spin"
+
+  for name, tag of faTags
+    do (name, tag) ->
+      capName = name.capitalize()
+      this["get" + capName] = ->
+        this["_" + capName]
+      this.["set" + capName] = (status) ->
+        if status
+          this.$.addClass "fa-#{tag}"
+        else
+          this.$.removeClass "fa-#{tag}"
+
+  # extra setters/getters
+  getType: -> 
+    this._type
+
+  setType: (type) -> 
+    this.$.removeClass "fa-#{this._type}" if this._type?
+    this.$.addClass "fa-#{type}"
+    this._type = type
+
+  Icon.sizes = [1.0, 4/3, 2.0, 3.0, 4.0, 5.0]
+
+  getSize: -> 
+    this._size
+
+  setSize: (size) ->
+    if size in Icon.sizes
+      this.$.removeClass "fa-lg fa-2x fa-3x fa-4x fa-5x"
+      switch size
+        when 4/3
+          this.$.addClass "fa-lg"
+        else
+          this.$.addClass "fa-#{size}x"
     else
-      this.$.removeClass "fa-spin"
+      sizes = Icons.sizes.join ", "
+      error = "invalid icon size: #{size} is not in #{sizes}" 
+      throw error
+  
+  # expose properties from setters & getters
+  defineProperties this
+
+
+# This is plain wrong. MathjaxLoader (and SwitchButton) should not inherit
+# from Icons but encapsulate an icon instance (some icon methods do not
+# make sense on the loader or the button and break encapsulation).
 
 HTML class MathJaxLoader extends Icon
   constructor: (options) ->
@@ -287,6 +359,37 @@ HTML class MathJaxLoader extends Icon
   debug: ->
     MathJax.Hub.signal.Interest (msg) -> 
       console.log "MathJax:", msg[0]
+
+HTML class SwitchButton extends Component
+  constructor: (options) ->
+    # TODO: make type an object with "on" and "off" attributes.
+    this.typeOn = options.typeOn
+    this.typeOff = options.typeOff
+    options.typeOn = options.typeOff = undefined
+    options.class = (options.class or "") + " switch fa"
+    options.css = (options.css or {})
+    options.css.cursor = "pointer"
+    options.css.fontSize = "1em"
+
+    super "i", options
+
+    this.off()
+    this.$.on "click": => this.toggle()
+
+  on: =>
+    this.$.removeClass("fa-" + this.typeOff).addClass("fa-" + this.typeOn)
+    this.status = on
+
+  off: =>
+    this.$.removeClass("fa-" + this.typeOn).addClass("fa-" + this.typeOff)
+    this.status = off
+
+  toggle: (status = undefined) =>
+    status ?= not this.status
+    if status is on 
+      this.on() 
+    else 
+      this.off()
 
 # Deck / Panels
 # ------------------------------------------------------------------------------
@@ -347,40 +450,7 @@ HTML class Panels extends Component # TODO: rename "Deck" ? # Shit, needs some j
       else
         $(this).css transform: "translateX(100%)", zIndex: -2
 
-# Switch Button
-# ------------------------------------------------------------------------------
-HTML class SwitchButton extends Component
-  constructor: (options) ->
-    # TODO: make type an object with "on" and "off" attributes.
-    this.typeOn = options.typeOn
-    this.typeOff = options.typeOff
-    options.typeOn = options.typeOff = undefined
-    options.class = (options.class or "") + " switch fa"
-    options.css = (options.css or {})
-    options.css.cursor = "pointer"
-    options.css.fontSize = "1em"
 
-    super "i", options
-
-    this.off()
-    this.$.on "click": => this.toggle()
-
-  connect: connect
-
-  on: =>
-    this.$.removeClass("fa-" + this.typeOff).addClass("fa-" + this.typeOn)
-    this.status = on
-
-  off: =>
-    this.$.removeClass("fa-" + this.typeOn).addClass("fa-" + this.typeOff)
-    this.status = off
-
-  toggle: (status = undefined) =>
-    status ?= not this.status
-    if status is on 
-      this.on() 
-    else 
-      this.off()
 
 # Table of Contents
 # ------------------------------------------------------------------------------
