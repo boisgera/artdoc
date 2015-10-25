@@ -142,6 +142,10 @@ String::capitalize = ->
 String::startsWith = (string) ->
     this[...string.length] is string
 
+# TODO: dont declare the function as an accessor. Instead, create a new function
+#       that will dispatch the call dynamically on the instance. With this method, 
+#       if we tweak the get/set methods at runtime (e.g. with connect), the 
+#       property still works as expected.
 defineProperties = (cls) ->
   prototype = cls.prototype
   properties = {}
