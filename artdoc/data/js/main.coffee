@@ -136,30 +136,34 @@ styleText = ->
 type = (item) ->
   Object::toString.call(item)[8...-1].toLowerCase()
 
-String.prototype.capitalize = ->
+String::capitalize = ->
     this.charAt(0).toUpperCase() + this.slice(1)
 
-String.prototype.startsWith = (string) ->
-    this.slice(0, string.length) == string
+String::startsWith = (string) ->
+    this[...string.length] is string
 
-defineProperties = (prototype) ->
+defineProperties = (cls) ->
+  prototype = cls.prototype
   properties = {}
-  for name, function of prototype
-    if name.startsWith "get" and name isnt "get"
-      propName = a[3].toLowercase() + a[4..]
+  for own name, fct of prototype
+    if name.startsWith("get") and name isnt "get"
+      propName = name[3].toLowerCase() + name[4..]
       properties[propName] ?= {}
-      properties[propName].get = function
-    if name.startsWith "set" and name isnt "set"
-      propName = a[3].toLowercase() + a[4..]
+      properties[propName].get = fct
+    if name.startsWith("set") and name isnt "set"
+      propName = name[3].toLowerCase() + name[4..]
       properties[propName] ?= {}
-      properties[propName].set = function
-  for propName, desc of properties
-    Object.defineProperty prototype, propName, desc 
+      properties[propName].set = fct
+  Object.defineProperties prototype, properties
 
 # Method Observers
 # ==============================================================================
 # 
 # Mix the connect method below into your class to enable observers.
+#
+# Question: can we support properties / accessors ? Urk.
+# Play with Object.getOwnPropertyDescriptor in the prototype chain,
+# then shadow getters / setters ?
 connect = (links) ->
   all_targets = this._targets ?= {}
   for name, target of links
@@ -197,7 +201,12 @@ connect = (links) ->
 #
 #         $("body").prepend header.$
 #
-#     Additionally, jQuery objects can be used directly in HTML factories.         
+#     Use the "co" data stored in the jQuery object to get the component back:
+#
+#         > header.$.data("co") is header
+#         true
+#
+#     JQuery objects can be used directly in HTML factories.         
 #
 #   - Custom components encapsulate logic and data:
 #
@@ -218,7 +227,6 @@ connect = (links) ->
 #   - mix `connect` in Component by default and explain usage (button example)
 #
 class Component
-
   # Remark: not sure a constructor is the right pattern here 
   # (given the extra tag argument).
   constructor: (tag, attributes, children...) ->
@@ -290,7 +298,6 @@ HTML class Icon extends Component
     if not _type = options.type
       throw "undefined icon type"
     delete options.type
-    #options.css?.fontSize ?= "1em" # really ? get rid of that.
     super "i", options
     this.$.addClass "fa"
     this.type = _type
@@ -302,12 +309,15 @@ HTML class Icon extends Component
     pulse: "pulse"
     spin: "spin"
 
+  # Think of where the state should be for getters. 
+  # In the DOM or in the component ? Also think of default values.
+  # Conceptually, that's simpler not to trust the DOM I guess ...
   for name, tag of faTags
-    do (name, tag) ->
+    do (name, tag) =>
       capName = name.capitalize()
-      this["get" + capName] = ->
-        this["_" + capName]
-      this.["set" + capName] = (status) ->
+      this::["get" + capName] = ->
+        this["_#{name}"] # can be undefined ... that sucks.
+      this::["set" + capName] = (status) ->
         if status
           this.$.addClass "fa-#{tag}"
         else
@@ -325,7 +335,7 @@ HTML class Icon extends Component
   Icon.sizes = [1.0, 4/3, 2.0, 3.0, 4.0, 5.0]
 
   getSize: -> 
-    this._size
+    if this._size? then this.size else 1.0 # use the style data instead ?
 
   setSize: (size) ->
     if size in Icon.sizes
@@ -343,7 +353,6 @@ HTML class Icon extends Component
   # expose properties from setters & getters
   defineProperties this
 
-
 # This is plain wrong. MathjaxLoader (and SwitchButton) should not inherit
 # from Icons but encapsulate an icon instance (some icon methods do not
 # make sense on the loader or the button and break encapsulation).
@@ -351,10 +360,10 @@ HTML class Icon extends Component
 HTML class MathJaxLoader extends Icon
   constructor: (options) ->
     options.type = "cog"
-    options.class = (options.class or "") + " mathjax-loader"
     super options
-    this.spin()
-    MathJax.Hub.Register.StartupHook "End", => this.$.remove()
+    this.$.addClass "mathjax-loader"
+    this.spin = true
+    MathJax.Hub.Register.StartupHook "End", => this.$.css display: "none"
 
   debug: ->
     MathJax.Hub.signal.Interest (msg) -> 
@@ -366,13 +375,13 @@ HTML class SwitchButton extends Component
     this.typeOn = options.typeOn
     this.typeOff = options.typeOff
     options.typeOn = options.typeOff = undefined
-    options.class = (options.class or "") + " switch fa"
     options.css = (options.css or {})
     options.css.cursor = "pointer"
     options.css.fontSize = "1em"
 
     super "i", options
 
+    this.$.addClass "switch fa"
     this.off()
     this.$.on "click": => this.toggle()
 
@@ -652,7 +661,8 @@ $ ->
 
   middleLeft = 
     css: {position: "fixed", top: "50%", left: "1em"}
-  body.prepend HTML.MathJaxLoader(middleLeft).$
+  body.prepend  HTML.MathJaxLoader(middleLeft).$
+
 
   manageLinks()
   
