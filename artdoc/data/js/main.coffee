@@ -149,15 +149,17 @@ String::startsWith = (string) ->
 defineProperties = (cls) ->
   prototype = cls.prototype
   properties = {}
-  for own name, fct of prototype
+  for own name of prototype
     if name.startsWith("get") and name isnt "get"
       propName = name[3].toLowerCase() + name[4..]
       properties[propName] ?= {}
-      properties[propName].get = fct
+      do (name) ->
+        properties[propName].get = -> this[name]()
     if name.startsWith("set") and name isnt "set"
       propName = name[3].toLowerCase() + name[4..]
       properties[propName] ?= {}
-      properties[propName].set = fct
+      do (name) ->
+        properties[propName].set = (args...) -> this[name](args...)
   Object.defineProperties prototype, properties
 
 # Method Observers
