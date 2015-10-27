@@ -142,11 +142,9 @@ String::capitalize = ->
 String::startsWith = (string) ->
     this[...string.length] is string
 
-# TODO: dont declare the function as an accessor. Instead, create a new function
-#       that will dispatch the call dynamically on the instance. With this method, 
-#       if we tweak the get/set methods at runtime (e.g. with connect), the 
-#       property still works as expected.
-defineProperties = (cls) ->
+# Properties
+# ==============================================================================
+AutoProps = (cls) ->
   prototype = cls.prototype
   properties = {}
   for own name of prototype
@@ -161,15 +159,13 @@ defineProperties = (cls) ->
       do (name) ->
         properties[propName].set = (args...) -> this[name](args...)
   Object.defineProperties prototype, properties
+  return cls
 
 # Method Observers
 # ==============================================================================
 # 
 # Mix the connect method below into your class to enable observers.
-#
-# Question: can we support properties / accessors ? Urk.
-# Play with Object.getOwnPropertyDescriptor in the prototype chain,
-# then shadow getters / setters ?
+# Connect to getters / setters to observe properties read / write .
 connect = (links) ->
   all_targets = this._targets ?= {}
   for name, target of links
@@ -181,7 +177,7 @@ connect = (links) ->
         new_method = (args...) =>
           output = method.call(this, args...)
           for _target in this._targets[name]
-            _target(this, args...)
+            _target(args...)
           return output 
         new_method._connected = on
         this[name] = new_method
@@ -227,10 +223,12 @@ connect = (links) ->
 #     Yeah, let's try "co" for a while ...
 #
 #   - document how most component accept custom constructor arguments AND
-#     usually some (possibly filtered) native ones. Describe how to handle
-#     nesting with custom components ? (Still fuzzy in my head)
+#     usually some (possibly filtered) native ones. Non-applicable options
+#     should be removed before being transmitted up in the object constructors. 
+#     Describe how to handle nesting with custom components ? 
+#     (Still fuzzy in my head)
 #
-#   - mix `connect` in Component by default and explain usage (button example)
+#   - mix `connect` in Component by default ? Yes. Document usage (ex: button)
 #
 class Component
   # Remark: not sure a constructor is the right pattern here 
@@ -270,6 +268,7 @@ class Component
 # HTML Builder
 HTML = (cls) -> # add Component classes as factories the HTML namespace.
   HTML[cls.name] = (args...) -> new cls(args...)
+  return cls
 
 # TODO: find and exhasutive list of HTML tags in plain text.
 for tag in "a aside body div em h1 h2 h3 h4 h5 head html i main nav p span strong style".split(" ")
@@ -279,57 +278,62 @@ for tag in "a aside body div em h1 h2 h3 h4 h5 head html i main nav p span stron
 
 # Icons
 # ==============================================================================
-#extend = (base, diff) ->
-#  for k, v of diff
-#    bv = base[k]
-#    if k is "css" and bv?
-#      extend(bv, v)
-#    else if k is "class" and bv?
-#      base[k] = [base[k], v].join(" ")
-#    else
-#      base[k] = v
-#  return base
-#
-#configure = (html, options) ->
-#  options ?= {}
-#  html.attr("id", options.id) if options.id?
-#  html.addClass(options.class) if options.class?
-#  html.css(options.css) if options.css?  
+# TODO: implement all font awesome features from 
+#       <https://fortawesome.github.io/Font-Awesome/examples/> 
+#       Still TODO:
+#         - bordered / pulled
+#         - rotated / flipped
+#         - stacked.
 
-# TODO: implement all/most font awesome features from 
-#       <https://fortawesome.github.io/Font-Awesome/examples/> ?
-
-HTML class Icon extends Component
+# A declarative version of properties (with defaults) would be nice to have,
+# to avoid most of the boilerplate in the constructor. We could reduce it by
+# 90% ...Have a look at React props ?
+HTML AutoProps class Icon extends Component
   constructor: (options) ->
-    if not _type = options.type
+    if not options.type?
       throw "undefined icon type"
-    delete options.type
-    super "i", options
-    this.$.addClass "fa"
-    this.type = _type
+    else
+      this._type = options.type
+      delete options.type
 
-  # Set up boolean icon properties setters & getters
+    this._size = options.size
+    delete options.size
+    this._size ?= 1.0
+
+    extra = "fixedWidth li pulse spin".split(" ")
+    for property in extra
+        this["_#{property}"] = options[property]
+        delete options[property]
+        this["_#{property}"] ?= false
+
+    super "i", options
+
+    this.$.addClass "fa"
+    # Synchronize DOM with state
+    this.type = this._type
+    this.size = this._size
+    for property in extra
+       this[property] = this["_#{property}"]
+
+  # Set up basic setters & getters
   faTags =  
     fixedWidth: "fw"
     list: "li"
     pulse: "pulse"
     spin: "spin"
 
-  # Think of where the state should be for getters. 
-  # In the DOM or in the component ? Also think of default values.
-  # Conceptually, that's simpler not to trust the DOM I guess ...
   for name, tag of faTags
     do (name, tag) =>
       capName = name.capitalize()
       this::["get" + capName] = ->
-        this["_#{name}"] # can be undefined ... that sucks.
+        this["_#{name}"]
       this::["set" + capName] = (status) ->
         if status
           this.$.addClass "fa-#{tag}"
         else
           this.$.removeClass "fa-#{tag}"
 
-  # extra setters/getters
+  # Extra setters & getters
   getType: -> 
     this._type
 
@@ -341,10 +345,11 @@ HTML class Icon extends Component
   Icon.sizes = [1.0, 4/3, 2.0, 3.0, 4.0, 5.0]
 
   getSize: -> 
-    if this._size? then this.size else 1.0 # use the style data instead ?
+    this._size
 
   setSize: (size) ->
     if size in Icon.sizes
+      this._size = size
       this.$.removeClass "fa-lg fa-2x fa-3x fa-4x fa-5x"
       switch size
         when 4/3
@@ -352,24 +357,20 @@ HTML class Icon extends Component
         else
           this.$.addClass "fa-#{size}x"
     else
-      sizes = Icons.sizes.join ", "
-      error = "invalid icon size: #{size} is not in #{sizes}" 
+      sizes = Icon.sizes.join ", "
+      error = "invalid icon size: #{size} is not in [#{sizes}]" 
       throw error
   
-  # expose properties from setters & getters
-  defineProperties this
-
-# This is plain wrong. MathjaxLoader (and SwitchButton) should not inherit
-# from Icons but encapsulate an icon instance (some icon methods do not
-# make sense on the loader or the button and break encapsulation).
-
+# This is a bit ugly, should encapsulate/wrap an icon instead.
 HTML class MathJaxLoader extends Icon
   constructor: (options) ->
     options.type = "cog"
     super options
     this.$.addClass "mathjax-loader"
     this.spin = true
-    MathJax.Hub.Register.StartupHook "End", => this.$.css display: "none"
+    MathJax.Hub.Register.StartupHook "End", => 
+      this.spin = false
+      this.$.css display: "none"
 
   debug: ->
     MathJax.Hub.signal.Interest (msg) -> 
@@ -377,26 +378,28 @@ HTML class MathJaxLoader extends Icon
 
 HTML class SwitchButton extends Component
   constructor: (options) ->
-    # TODO: make type an object with "on" and "off" attributes.
-    this.typeOn = options.typeOn
-    this.typeOff = options.typeOff
-    options.typeOn = options.typeOff = undefined
-    options.css = (options.css or {})
-    options.css.cursor = "pointer"
-    options.css.fontSize = "1em"
+    {@typeOn, @typeOff} = options or {}
+    delete options.typeOn
+    delete options.typeOff
+    this.typeOn ?= "toggle-on"
+    this.typeOff ?= "toggle-off"
+    options.css ?= {}
+    options.css.cursor ?= "pointer"
 
-    super "i", options
+    this.icon = HTML.Icon type: this.typeOff
+    super "div", options, this.icon.$
 
-    this.$.addClass "switch fa"
     this.off()
     this.$.on "click": => this.toggle()
 
+  # single "state" (or status) property instead of "on" and "off" methods ?
+
   on: =>
-    this.$.removeClass("fa-" + this.typeOff).addClass("fa-" + this.typeOn)
+    this.icon.type = this.typeOn
     this.status = on
 
   off: =>
-    this.$.removeClass("fa-" + this.typeOn).addClass("fa-" + this.typeOff)
+    this.icon.type = this.typeOff
     this.status = off
 
   toggle: (status = undefined) =>
@@ -576,7 +579,7 @@ setupTOC = () ->
     position: "fixed", 
     top: "1em", 
     left: "1em", zIndex: 999
-  hamburger = HTML.SwitchButton typeOff: "bars", typeOn: "times", css: topLeftCorner
+  hamburger = HTML.SwitchButton css: topLeftCorner, typeOff: "bars", typeOn: "times"
   $("body").prepend hamburger.$
 
   # Create the table of contents
@@ -667,8 +670,9 @@ $ ->
 
   middleLeft = 
     css: {position: "fixed", top: "50%", left: "1em"}
-  body.prepend  HTML.MathJaxLoader(middleLeft).$
-
+  window.loader = loader = HTML.MathJaxLoader(middleLeft)
+  loader.connect setSize: (size) -> console.log "***", size
+  body.prepend loader.$
 
   manageLinks()
   
