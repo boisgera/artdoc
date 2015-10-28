@@ -271,7 +271,7 @@ HTML = (cls) -> # add Component classes as factories the HTML namespace.
   return cls
 
 # TODO: find and exhasutive list of HTML tags in plain text.
-for tag in "a aside body div em h1 h2 h3 h4 h5 head html i main nav p span strong style".split(" ")
+for tag in "a aside body code div em h1 h2 h3 h4 h5 head html i main nav p pre span strong style".split(" ")
   HTML[tag] = do (tag) ->
     (args...) ->
       (new Component(tag, args...)).$
@@ -393,7 +393,7 @@ HTML class SwitchButton extends Component
     this.$.on "click": => this.toggle()
 
   # single "state" (or status) property instead of "on" and "off" methods ?
-
+  # actually we could keep on and off as properties on top of that.
   on: =>
     this.icon.type = this.typeOn
     this.status = on
@@ -409,9 +409,64 @@ HTML class SwitchButton extends Component
     else 
       this.off()
 
+# Code Block
+# ==============================================================================
+#
+# TODO:
+#
+#   - basically, some text content inside a pre + code environment.
+#     code is here to mean "monospace", "pre" to keep whitespace ok.
+#   
+#   - deal with dynamic construction of code blocks from js and
+#     "recycling" from existing pre + code components.
+#
+#   - (fenced) code blocks from pandoc can be annotated with some
+#     specific attributes, including the language name. 
+#     AFAICT, they are:
+#
+#       - the language (fixed list)
+#
+#       - numberLines / startFrom
+#      
+#   - pandoc may generate a more complex structure with a div/table/pre/code
+#     structure ... that depends on the attributes that are given ... 
+#     The code itself may be mangled with various tags (for the highlighter ?)
+#     Is pandoc fucking PARSING the language ? Yeah actually ...
+#     I may have to disable all this stuff ... there are some experiments
+#     that shall be done here.
+#
+#   - deal with the language specification (see e.g. 
+#     <http://stackoverflow.com/questions/5134242/semantics-standards-and-using-the-lang-attribute-for-source-code-in-markup>
+#   
+#    - I want the original text, or some modified version of it, accessible
+#      for clipboarding. An example of modification: if the text is a sequence
+#      of bash commands, or python commands in the interpreter (and the results),
+#      I probably only want the commands, not the prompt or the results.
+#
+#    - icon top right on hover and opacification of the code for clipboard ?
+#
+#    Do some experiments on code creation first, then see how to connect this
+#    to pandoc output.
+
+HTML class CodeBlock extends Component
+  constructor: (options) ->
+    options ?= {}
+    this.text = options.text
+    this.text ?= ""
+    delete this.text
+
+    super "pre", options, HTML.code(this.text) # Borked (text in pre, not code),
+                                               # investigiate
+
+    #this.$.append HTML.code(this.text).$
+
+
+
+
 # Deck / Panels
 # ------------------------------------------------------------------------------
-HTML class Panels extends Component # TODO: rename "Deck" ? # Shit, needs some jQuery args, no promotion.
+HTML class Panels extends Component # TODO: rename "Deck" ? 
+# Shit, needs some jQuery args, no automatic promotion.
   constructor: (options, items...) ->
 
     super "div", options
@@ -474,7 +529,6 @@ HTML class Panels extends Component # TODO: rename "Deck" ? # Shit, needs some j
 # ------------------------------------------------------------------------------
 
 # TODO: update the style (background) of the active section, maybe autofocus.
-
 HTML class TOC extends Component
   constructor: (options) ->
     root = options.root
@@ -665,6 +719,15 @@ $ ->
   body.css 
     overflow: "hidden"
   html.css overflow: "hidden"
+
+  code = """
+  if answer == 42:
+    do_this()
+  else:
+    do_that()
+  kthxbye()
+  """
+  body.prepend HTML.CodeBlock(code).$
 
   setupTOC()
 
