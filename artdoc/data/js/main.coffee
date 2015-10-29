@@ -4,7 +4,7 @@ exports = this
 # TODO
 # ==============================================================================
 #
-#   - overlay visible in panels when one panel is not full width/height.
+#   - overlay visible in Deck when one panel is not full width/height.
 #   - overlay not big enough when one panel is several pages tall
 #   - overlay does not cover the content it should cover, slow dat 
 #     shit to see what's going on.
@@ -507,8 +507,8 @@ HTML.SwitchButton = class SwitchButton extends HTML.CustomElement
     this.off()
     this.$.on "click": => this.toggle()
 
-  # single "state" (or status) property instead of "on" and "off" methods ?
-  # actually we could keep on and off as properties on top of that.
+  # consider using a single "state" (or status) property instead of "on" and 
+  # "off" methods ? (Actually we could keep on and off as convenience methods).
   on: =>
     this.icon.type = this.typeOn
     this.status = on
@@ -562,7 +562,9 @@ HTML.SwitchButton = class SwitchButton extends HTML.CustomElement
 #
 #    Do some experiments on code creation first, then see how to connect this
 #    to pandoc output.
-
+#
+# Use highlight.js automaticde detection ?
+#
 HTML.CodeBlock = class CodeBlock extends HTML.CustomElement
   constructor: (options) ->
     if not (this instanceof HTML.CodeBlock)
@@ -583,66 +585,66 @@ HTML.CodeBlock = class CodeBlock extends HTML.CustomElement
         text: (trigger) => this.text
 
 
-# Deck / Panels
+# Deck
 # ------------------------------------------------------------------------------
-HTML.Panels = class Panels extends HTML.CustomElement # TODO: rename "Deck" ? 
-# Shit, needs some jQuery args, no automatic promotion.
-  constructor: (options, items...) ->
-    if not (this instanceof HTML.Panels)
-      return new HTML.Panels(options, items...)
 
-    this.$ = HTML.div(options).$
+# TODO: automatically focus on the current card so that up/down arrow work.
+# TODO: hook the shit out of MathJax to refocus on the TOC is necessary.
 
-    overlay = HTML.div
-      class: "overlay"
-      css:
-        width: "100%", height:"100%", position: "absolute"
-        backgroundColor: "#ffffff"
-        opacity: 0.8
-        zIndex: -1
-        pointerEvents: "none"
+HTML.Deck = AutoProps class Deck extends HTML.CustomElement
+  constructor: (attributes, children...) ->
+    if not (this instanceof HTML.Deck)
+      return new HTML.Deck(attributes, children...)
+    [attributes, children] = HTML.Element.shift(attributes, children)
+    children = (HTML.Element(child) for child in children)
+
+    this.$ = HTML.div(attributes).$
 
     css = ->
       width: "100%", height:"100%",
       padding: "0px"
       overflowY: "scroll"
-      overflowX: "hidden"
+      overflowX: "hidden" 
       position: "absolute",
       transition: "transform 1.2s cubic-bezier(0.0,0,0.25,1)"
-    divs = []
+    cards = []
 
-    for item, i in items
-      divs.push HTML.div(css: css(), item).$
+    for child, i in children
+      cards.push HTML.div(css: css(), child.$).$
 
-    this.$.append HTML.div(
+    this.$.append (HTML.div
+        class: "cards"
         css:
           position: "relative"
           width: "100%", height: "100%"
           overflowX: "hidden"
           overflowY: "hidden"
-        overlay
-        divs...).$
+        cards...).$
 
-    this.inner = this.$.children()
-    this.items = this.inner.children()
+    this.cards = this.$.find(".cards").children()
 
-    this.setIndex 0
+    this._index = 0
+    this.setIndex this._index
 
-  setIndex: (index) =>
-    index = Math.max(0, Math.min(this.items.length-2, index))
-    this.index = index
-    this.items.each (i) ->
-      if i is 0
-        undefined # this is the semi-transparent overlay
-      else if i-1 < index
+  getIndex: -> this._index
+
+  setIndex: (index) ->
+    index = Math.max(0, Math.min(this.cards.length - 1, index))
+    console.log "index", index
+    this._index = index
+    this.cards.each (i) ->
+      if i < index
+        console.log "<"
+        console.log this.outerHTML
         $(this).css transform: "translateX(-100%)", zIndex: -2
-      else if i-1 is index
-        $(this).css transform: "translateX(0%)", zIndex:0
+      else if i is index
+        console.log "|"
+        console.log this.outerHTML
+        $(this).css transform: "translateX(0%)", zIndex: 0
         $(this).on "transitionend", -> 
-          #if $(this).css("transform") is "matrix(1, 0, 0, 1, 0, 0)"
-          #  undefined
           $(this).off "transitionend"
-      else
+      else if i > index
+        console.log ">"
         $(this).css transform: "translateX(100%)", zIndex: -2
 
 
@@ -770,23 +772,23 @@ setupTOC = () ->
       backgroundColor: "#f0f0f0"
 
   # Setup the TOC / content panel and wire with the button
-  panel = HTML.Panels
+  window.deck = deck = HTML.Deck
     css:
       width:"100vw" 
       height:"100vh" 
-      overflowX: "hidden", 
-      overflowY: "hidden", 
-    toc,
+      overflowX: "hidden" 
+      overflowY: "hidden" 
+    toc
     main
 
-  $("body").append panel.$
+  $("body").append deck.$
 
   # table of contents: close on click
   $("a", toc.$).on "click", -> hamburger.off()
 
   hamburger.connect
-    on: -> panel.setIndex 0
-    off: -> panel.setIndex 1
+    on: -> deck.index = 0
+    off: -> deck.index = 1
 
   hamburger.connect # WTF ? toc.focus is not a function ?
     on: -> toc.focus() # hook in a better place (refactor anchor click callbacks)
@@ -854,7 +856,7 @@ $ ->
   print "DONE."
   """
 
-  body.prepend HTML.CodeBlock(text: code).$
+  #body.prepend HTML.CodeBlock(text: code).$
 
   setupTOC()
 
@@ -868,7 +870,7 @@ $ ->
   styleText()
 
   #testAnim()
-+
+
   $(document).on "keydown", (event) ->
     switch event.which
       when "S".charCodeAt(0)
