@@ -630,22 +630,14 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
 
   setIndex: (index) ->
     index = Math.max(0, Math.min(this.cards.length - 1, index))
-    console.log "index", index
     this._index = index
     this.cards.each (i) ->
       if i < index
-        console.log "<"
-        console.log this.outerHTML
-        $(this).css transform: "translateX(-100%)", zIndex: -2
+        $(this).css transform: "translateX(-100%)", zIndex: -1
       else if i is index
-        console.log "|"
-        console.log this.outerHTML
         $(this).css transform: "translateX(0%)", zIndex: 0
-        $(this).on "transitionend", -> 
-          $(this).off "transitionend"
       else if i > index
-        console.log ">"
-        $(this).css transform: "translateX(100%)", zIndex: -2
+        $(this).css transform: "translateX(100%)", zIndex: -1
 
 
 
