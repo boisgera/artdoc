@@ -1,4 +1,6 @@
 
+exports ?= this
+
 # TODO
 # ==============================================================================
 #
@@ -230,51 +232,142 @@ connect = (links) ->
 #
 #   - mix `connect` in Component by default ? Yes. Document usage (ex: button)
 #
-class Component
-  # Remark: not sure a constructor is the right pattern here 
-  # (given the extra tag argument).
-  constructor: (tag, attributes, children...) ->
-      [attributes, children] = Component.normalize(tag, attributes, children)
-      this.$ = $("<#{tag}></#{tag}>", attributes)
-      this.$.append(child) for child in children
-      this.$.data "co", this
 
-  this.normalize = (tag, attributes, children) ->
-    attributes ?= {}
-    if type(attributes) in ["array", "string"] or 
-       (attributes instanceof jQuery) or 
-       (attributes.$ instanceof jQuery) 
-      # not attributes, but content
-      children.unshift(attributes)
-      attributes = {}
+# define "native" components (wrapper for HTML elements ? with a .$ attribute) ?
+# can we create classes programatically ?
 
-    new_children = []
-    for child in children
-      if type(child) is "string" # Text Node
-        child = $(document.createTextNode(child))
-      else if child?.$ instanceof jQuery # Component
-        child = child.$
-      else if child?.tagName? # DOM Node
-        child = $(child)
-      # TODO: accept arrays of DOM Nodes ?
-      else if not (child instanceof jQuery)
-        throw "invalid child."
+# TODO:
+#   
+#   - native HTML Element vs Component ? Name of the base ? Element, then
+#     Native / Custom or all inherit from Element ? Have a look at the 
+#     terminology around Web Components / Shadow DOM, etc. Maybe don't
+#     worry too much for now about the native/custom distinction, inherit
+#     from an abstract Element.
+#
+#   - create bone fide classes for all Elements
+#
+#   - all Elements shall allow for new-less instantiation.
+#
+#   - update: don't bind the jQuery or DOM object to the Element by default.
+#     do it for CustomElements ? (and use the "elt" datum ?"
+
+HTML = {}
+
+do ->
+  HTML.Element = class Element
+    constructor: (elt)
+      if not (this instanceof HTML.Element)
+        return new HTML.Element(elt)
+
+      if elt instanceof HTML.Element
+        return elt
+      else if type(elt) is "string"
+        return HTML.Element(document.createTextNode(elt))
+      else if elt instanceof jQuery
+        this.$ = elt
+        return this
+      else if elt?.tagName? # DOM node
+        return HTML.Element $(elt)
+      else
+        throw "invalid element: #{elt}."
       new_children.push child
-    return [attributes, new_children]
 
-  connect: connect
+    shift = (attributes, children) ->
+      attributes ?= {}
+      if type(attributes) isnt "object" or 
+      (attributes instanceof jQuery) or 
+      (attributes.$ instanceof jQuery) 
+        # not attributes, but content
+        children.unshift(attributes)
+        attributes = {}
+      [attributes, children]
+      
+  tags = 
+    """
+    a abbr address area article aside audio b base bdi bdo blockquote body br
+    button canvas caption cite code col colgroup datalist dd del details dfn
+    dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3
+    h4 h5 h6 head header hr html i iframe image img input ins kbd keygen label
+    legend li link main map mark menu menuitem meta meter nav noscript object
+    ol optgroup option output p param p progres q rp rt ruby s samp script
+    section select small source span strong style sub summary sup table tbody
+    td textarea tfoot th thead time title tr track u ul var video wbr
+    """.split(/\s/)
+
+  for tag in tags
+    do (tag) ->
+      HTML[tag] = class extends HTML.Element
+        constructor: (attributes, children...) ->
+           if not (this instanceof cls)
+             return new cls(attributes, children)
+           [attributes, children] = HTML.Element.shift(attributes, children)
+           children = HTML.Element(child) for child in children
+           this.$ = $("<#{tag}></#{tag}>", attributes)
+           this.$.append(child.$) for child in children
+
+  HTML.CustomElement = class CustomElement
+    constructor: ->
+      if this.constructor is CustomElement
+        throw "CustomElement class is abstract"
+    connect: connect
+
+#class Component
+#  # Remark: not sure a constructor is the right pattern here 
+#  # (given the extra tag argument).
+#  constructor: (tag, attributes, children...) ->
+#      [attributes, children] = Component.normalize(tag, attributes, children)
+#      this.$ = $("<#{tag}></#{tag}>", attributes)
+#      this.$.append(child) for child in children
+#      this.$.data "co", this
+
+#  # I have conflated two things here: the "unshift" of attributes
+#  # and the automatic cast of children to jQuery. Split those methods.
+#  # Should I cast the children to component instead ? What method to
+#  # wrapp a jQuery object as a component ?
+#  this.normalize = (tag, attributes, children) ->
+#    attributes ?= {}
+#    if type(attributes) in ["array", "string"] or 
+#       (attributes instanceof jQuery) or 
+#       (attributes.$ instanceof jQuery) 
+#      # not attributes, but content
+#      children.unshift(attributes)
+#      attributes = {}
+
+#    new_children = []
+#    for child in children
+#      if type(child) is "string" # Text Node
+#        child = $(document.createTextNode(child))
+#      else if child?.$ instanceof jQuery # Component
+#        child = child.$
+#      else if child?.tagName? # DOM Node
+#        child = $(child)
+#      # TODO: accept arrays of DOM Nodes ?
+#      else if not (child instanceof jQuery)
+#        throw "invalid child."
+#      new_children.push child
+#    return [attributes, new_children]
+
+#  connect: connect
 
 
-# HTML Builder
-HTML = (cls) -> # add Component classes as factories the HTML namespace.
-  HTML[cls.name] = (args...) -> new cls(args...)
-  return cls
+## HTML Builder
+## Drop the HTML ? Use a Factory instead ? Can I do that in cs (as a decorator ?)
+## Is is wise to keep only the factory (it means that I cannot typecheck the 
+## instances ...). Is react using the same namespace for native & custom ?
+## OK, we can do it, I am just not sure that we should.
+## Wrt typecheck, we could add a name attribute to the function (the cls.name)
+## but how would we do the typecheck normally ? Consider instanceof stuff.
+#HTML = (cls) -> # add Component classes as factories the HTML namespace.
+#  HTML[cls.name] = (args...) -> new cls(args...)
+#  return cls
 
-# TODO: find and exhasutive list of HTML tags in plain text.
-for tag in "a aside body code div em h1 h2 h3 h4 h5 head html i main nav p pre span strong style".split(" ")
-  HTML[tag] = do (tag) ->
-    (args...) ->
-      (new Component(tag, args...)).$
+## TODO: find and exhasutive list of HTML tags in plain text.
+##       Nota: this stuff is nice but we cannot typecheck against the tag name
+##       can we ?
+#for tag in "a aside body code div em h1 h2 h3 h4 h5 head html i main nav p pre span strong style".split(" ")
+#  HTML[tag] = do (tag) ->
+#    (args...) ->
+#      (new Component(tag, args...)).$
 
 # Icons
 # ==============================================================================
@@ -333,7 +426,7 @@ HTML AutoProps class Icon extends Component
         else
           this.$.removeClass "fa-#{tag}"
 
-  # Extra setters & getters
+  # Other setters & getters
   getType: -> 
     this._type
 
@@ -453,10 +546,14 @@ HTML class CodeBlock extends Component
     options ?= {}
     this.text = options.text
     this.text ?= ""
-    delete this.text
+    delete options.text
+
+    console.log "c:", HTML.code(this.text), HTML.code(this.text).$ # undefined ???
 
     super "pre", options, HTML.code(this.text) # Borked (text in pre, not code),
                                                # investigiate
+
+    console.log "cb:", this.$
 
     #this.$.append HTML.code(this.text).$
 
@@ -727,14 +824,14 @@ $ ->
     do_that()
   kthxbye()
   """
-  body.prepend HTML.CodeBlock(code).$
+
+  body.prepend HTML.CodeBlock(text: code).$
 
   setupTOC()
 
   middleLeft = 
     css: {position: "fixed", top: "50%", left: "1em"}
-  window.loader = loader = HTML.MathJaxLoader(middleLeft)
-  loader.connect setSize: (size) -> console.log "***", size
+  loader = HTML.MathJaxLoader(middleLeft)
   body.prepend loader.$
 
   manageLinks()
