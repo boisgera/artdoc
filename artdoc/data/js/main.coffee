@@ -589,12 +589,7 @@ HTML.CodeBlock = class CodeBlock extends HTML.CustomElement
 # Deck
 # ------------------------------------------------------------------------------
 
-
-# TODO: for some reason, when I let the TOC totally scroll into the screen,
-#       there is a sudden change to the main doc when I close it, not a 
-#       smooth animation. (this has the side effect that we see the text
-#       shake for a moment ...). Investigate ...
-# TODO: reload is fucked up, the deck needs one second to stabilize its position.
+# TODO: if the transition is aborted, focus is not given to the proper card.
 HTML.Deck = AutoProps class Deck extends HTML.CustomElement
   constructor: (attributes, children...) ->
     if not (this instanceof HTML.Deck)
@@ -645,8 +640,10 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
       if i < index
         $(this).css transform: "translateX(-100%)", zIndex: -1
       else if i is index
-        $(this).focus()
         $(this).css transform: "translateX(0%)", zIndex: 0
+        $(this).on "transitionend", ->
+          $(this).focus()
+          $(this).off "transitionend"
       else if i > index
         $(this).css transform: "translateX(100%)", zIndex: -1
 
