@@ -588,9 +588,8 @@ HTML.CodeBlock = class CodeBlock extends HTML.CustomElement
 # Deck
 # ------------------------------------------------------------------------------
 
-# TODO: automatically focus on the current card so that up/down arrow work.
-# TODO: hook the shit out of MathJax to refocus on the TOC is necessary.
 
+# TODO: hook the shit out of MathJax to refocus on the TOC is necessary.
 HTML.Deck = AutoProps class Deck extends HTML.CustomElement
   constructor: (attributes, children...) ->
     if not (this instanceof HTML.Deck)
@@ -610,7 +609,11 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
     cards = []
 
     for child, i in children
-      cards.push HTML.div(css: css(), child.$).$
+      card = HTML.div
+               css: css()
+               attr: tabindex: -1
+               child.$
+      cards.push card.$
 
     this.$.append (HTML.div
         class: "cards"
@@ -622,9 +625,7 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
         cards...).$
 
     this.cards = this.$.find(".cards").children()
-
-    this._index = 0
-    this.setIndex this._index
+    this.index = 0
 
   getIndex: -> this._index
 
@@ -636,6 +637,7 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
         $(this).css transform: "translateX(-100%)", zIndex: -1
       else if i is index
         $(this).css transform: "translateX(0%)", zIndex: 0
+        $(this).focus()
       else if i > index
         $(this).css transform: "translateX(100%)", zIndex: -1
 
