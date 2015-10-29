@@ -15,123 +15,6 @@ exports = this
 #   - Scroll to link borked again ...
 #
 
-# CSS Reset
-# ==============================================================================
-reset = ->
-  style = HTML.style type:"text/css",
-    """
-    /* http://meyerweb.com/eric/tools/css/reset/ 
-       v2.0 | 20110126
-       License: none (public domain)
-    */
-
-    html, body, div, span, applet, object, iframe,
-    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-    a, abbr, acronym, address, big, cite, code,
-    del, dfn, em, img, ins, kbd, q, s, samp,
-    small, strike, strong, sub, sup, tt, var,
-    b, u, i, center,
-    dl, dt, dd, ol, ul, li,
-    fieldset, form, label, legend,
-    table, caption, tbody, tfoot, thead, tr, th, td,
-    article, aside, canvas, details, embed, 
-    figure, figcaption, footer, header, hgroup, 
-    menu, nav, output, ruby, section, summary,
-    time, mark, audio, video {
-	    margin: 0;
-	    padding: 0;
-	    border: 0;
-	    font-size: 100%;
-	    font: inherit;
-	    vertical-align: baseline;
-    }
-    /* HTML5 display-role reset for older browsers */
-    article, aside, details, figcaption, figure, 
-    footer, header, hgroup, menu, nav, section {
-	    display: block;
-    }
-    body {
-	    line-height: 1;
-    }
-    ol, ul {
-	    list-style: none;
-    }
-    blockquote, q {
-	    quotes: none;
-    }
-    blockquote:before, blockquote:after,
-    q:before, q:after {
-	    content: '';
-	    content: none;
-    }
-    table {
-	    border-collapse: collapse;
-	    border-spacing: 0;
-    }
-    """
-  $("html head").prepend style.$
-
-
-# Typography
-# ==============================================================================
-
-# TODO: transform everything here.
-
-styleText = ->
-  fontSize =
-    small: "14px"
-    medium: "22px"
-    large: "28px"
-    xLarge: "36px"
-    huge: "48px"
-
-  $("body").css
-    fontFamily: "Alegreya, serif"
-    fontSize: fontSize.medium
-    fontWeight: "normal"
-    lineHeight: 1.5
-    textAlign: "justify"
-    textRendering: "optimizeLegibility"
-    hyphens: "auto"
-    MozHyphens: "auto"
-
-  $("h1, h2, h3").css
-    margin: "0.5em 0em 0.5em 0em"
-
-  $("h1").css
-    fontSize: fontSize.xLarge
-    fontWeight: "bold"
-
-  $("h2").css
-    fontSize: fontSize.large
-    fontWeight: "bold"
-
-  $("h3").css
-    fontSize: fontSize.medium
-    fontWeight: "bold"
-
-  $("h4, h5, h6").css
-      fontSize: fontSize.medium
-      fontWeight: "bold"
-      float: "left"
-      marginRight: "1em"
-      marginTop: "0em"
-      marginLeft: "0em"
-      marginBottom: "0em"
-
-  $("h1", "main header").css 
-    fontSize: fontSize.huge
-    fontWeight: "bold"
-
-  $(".author", "main header").css
-    fontSize: fontSize.xLarge
-    fontWeight: "bold"
-
-  $("p").css
-    marginTop: "1em"
-    marginBottom: "1em"
-
-  return undefined
 
 # Javascript Helpers
 # ==============================================================================
@@ -166,8 +49,15 @@ AutoProps = (cls) ->
 # Method Observers
 # ==============================================================================
 # 
-# Mix the connect method below into your class to enable observers.
-# Connect to getters / setters to observe properties read / write .
+# Mix the connect method below into your class to enable observers, or
+# use the Connect class decorator. 
+# Connect to getters / setters to observe properties reads / writes .
+
+Connect = (cls) ->
+  prototype = cls.prototype
+  prototype.connect = connect
+  return cls
+
 connect = (links) ->
   all_targets = this._targets ?= {}
   for name, target of links
@@ -290,7 +180,7 @@ do ->
     dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3
     h4 h5 h6 head header hr html i iframe image img input ins kbd keygen label
     legend li link main map mark menu menuitem meta meter nav noscript object
-    ol optgroup option output p param p progres q rp rt ruby s samp script
+    ol optgroup option output p param pre progress q rp rt ruby s samp script
     section select small source span strong style sub summary sup table tbody
     td textarea tfoot th thead time title tr track u ul var video wbr
     """.split(/\s/)
@@ -306,11 +196,11 @@ do ->
            this.$ = $("<#{tag}></#{tag}>", attributes)
            this.$.append(child.$) for child in children
 
-  HTML.CustomElement = class CustomElement extends HTML.Element
+  # Support args shift & automatic promotion in all custom Elements ?
+  HTML.CustomElement = Connect class CustomElement extends HTML.Element
     constructor: ->
       if this.constructor is CustomElement
         throw "CustomElement class is abstract"
-    connect: connect
 
 #class Component
 #  # Remark: not sure a constructor is the right pattern here 
@@ -369,6 +259,125 @@ do ->
 #  HTML[tag] = do (tag) ->
 #    (args...) ->
 #      (new Component(tag, args...)).$
+
+
+# CSS Reset
+# ==============================================================================
+reset = ->
+  style = HTML.style type:"text/css",
+    """
+    /* http://meyerweb.com/eric/tools/css/reset/ 
+       v2.0 | 20110126
+       License: none (public domain)
+    */
+
+    html, body, div, span, applet, object, iframe,
+    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+    a, abbr, acronym, address, big, cite, code,
+    del, dfn, em, img, ins, kbd, q, s, samp,
+    small, strike, strong, sub, sup, tt, var,
+    b, u, i, center,
+    dl, dt, dd, ol, ul, li,
+    fieldset, form, label, legend,
+    table, caption, tbody, tfoot, thead, tr, th, td,
+    article, aside, canvas, details, embed, 
+    figure, figcaption, footer, header, hgroup, 
+    menu, nav, output, ruby, section, summary,
+    time, mark, audio, video {
+	    margin: 0;
+	    padding: 0;
+	    border: 0;
+	    font-size: 100%;
+	    font: inherit;
+	    vertical-align: baseline;
+    }
+    /* HTML5 display-role reset for older browsers */
+    article, aside, details, figcaption, figure, 
+    footer, header, hgroup, menu, nav, section {
+	    display: block;
+    }
+    body {
+	    line-height: 1;
+    }
+    ol, ul {
+	    list-style: none;
+    }
+    blockquote, q {
+	    quotes: none;
+    }
+    blockquote:before, blockquote:after,
+    q:before, q:after {
+	    content: '';
+	    content: none;
+    }
+    table {
+	    border-collapse: collapse;
+	    border-spacing: 0;
+    }
+    """
+  $("html head").prepend style.$
+
+
+# Typography
+# ==============================================================================
+
+# TODO: transform everything here.
+
+styleText = ->
+  fontSize =
+    small: "14px"
+    medium: "22px"
+    large: "28px"
+    xLarge: "36px"
+    huge: "48px"
+
+  $("body").css
+    fontFamily: "Alegreya, serif"
+    fontSize: fontSize.medium
+    fontWeight: "normal"
+    lineHeight: 1.5
+    textAlign: "justify"
+    textRendering: "optimizeLegibility"
+    hyphens: "auto"
+    MozHyphens: "auto"
+
+  $("h1, h2, h3").css
+    margin: "0.5em 0em 0.5em 0em"
+
+  $("h1").css
+    fontSize: fontSize.xLarge
+    fontWeight: "bold"
+
+  $("h2").css
+    fontSize: fontSize.large
+    fontWeight: "bold"
+
+  $("h3").css
+    fontSize: fontSize.medium
+    fontWeight: "bold"
+
+  $("h4, h5, h6").css
+      fontSize: fontSize.medium
+      fontWeight: "bold"
+      float: "left"
+      marginRight: "1em"
+      marginTop: "0em"
+      marginLeft: "0em"
+      marginBottom: "0em"
+
+  $("h1", "main header").css 
+    fontSize: fontSize.huge
+    fontWeight: "bold"
+
+  $(".author", "main header").css
+    fontSize: fontSize.xLarge
+    fontWeight: "bold"
+
+  $("p").css
+    marginTop: "1em"
+    marginBottom: "1em"
+
+  return undefined
 
 # Icons
 # ==============================================================================
@@ -465,7 +474,6 @@ HTML.MathJaxLoader = class MathJaxLoader extends HTML.CustomElement
     if not (this instanceof HTML.MathJaxLoader)
       return new HTML.MathJaxLoader(options)
     options.type = "cog"
-    
     this.icon = HTML.Icon(options)
     this.$ = this.icon.$
     this.$.data "elt", this
@@ -493,12 +501,7 @@ HTML.SwitchButton = class SwitchButton extends HTML.CustomElement
     options.css.cursor ?= "pointer"
 
     this.icon = HTML.Icon(type: this.typeOff)
-
-    console.log "icon dump", this.icon.$[0].outerHTML 
     this.$ = HTML.div(options, this.icon).$
- 
-    console.log "button dump", this.$[0].outerHTML
-
     this.$.data "elt", this
 
     this.off()
@@ -565,20 +568,19 @@ HTML.CodeBlock = class CodeBlock extends HTML.CustomElement
     if not (this instanceof HTML.CodeBlock)
       return new HTML.CodeBlock(options)
     options ?= {}
-    this.text = options.text
+    this.text = options.text # "text" really ? Calling like a HTML.code would be nicer ...
+    # that means that we need the shift / promote dance used by native Elements.
     this.text ?= ""
     delete options.text
 
-    console.log "c:", HTML.code(this.text), HTML.code(this.text).$ # undefined ???
+    options.css ?= {}
+    options.css.cursor = "pointer"
 
-    super "pre", options, HTML.code(this.text) # Borked (text in pre, not code),
-                                               # investigiate
+    # well, the button should use a Button Element (TODO) ...
+    this.$ = (HTML.div options, HTML.pre HTML.code(this.text)).$
 
-    console.log "cb:", this.$
-
-    #this.$.append HTML.code(this.text).$
-
-
+    this.clipboard = new Clipboard this.$[0],
+        text: (trigger) => this.text
 
 
 # Deck / Panels
@@ -762,7 +764,7 @@ setupTOC = () ->
   # Create the table of contents
   window.toc = toc = HTML.TOC
     root: 
-      main
+      main # declare as a child instead ? Yes, more consistent.
     css: 
       paddingLeft: "5em"
       backgroundColor: "#f0f0f0"
@@ -776,8 +778,6 @@ setupTOC = () ->
       overflowY: "hidden", 
     toc,
     main
-
-  console.log "panel:", panel.$[0].outerHTML
 
   $("body").append panel.$
 
@@ -846,14 +846,15 @@ $ ->
   html.css overflow: "hidden"
 
   code = """
-  if answer == 42:
-    do_this()
+  if True:
+    print 42
   else:
-    do_that()
-  kthxbye()
+    print 43
+
+  print "DONE."
   """
 
-  #body.prepend HTML.CodeBlock(text: code).$
+  body.prepend HTML.CodeBlock(text: code).$
 
   setupTOC()
 

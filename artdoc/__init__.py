@@ -152,6 +152,9 @@ def jquery(url="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.js",
 def velocity(*args, **kwargs):
     return [HTML.script(src=str(ARTDOC / "js" / "velocity.js"))]
 
+def clipboard(*args, **kwargs):
+    return [HTML.script(src=str(ARTDOC / "js" / "clipboard.js"))]
+
 
 # TODO: resolve ARTDOC wrt WORKDIR, then use this instead of the hardcoded paths.
 def artdoc():
@@ -338,6 +341,10 @@ def main():
         # ----------------------------------------------------------------------
         info("Add Velocity")
         head.extend(velocity(standalone=standalone))
+
+        # ----------------------------------------------------------------------
+        info("Add Clipboard.js")
+        head.extend(clipboard(standalone=standalone))
 
 
         # ----------------------------------------------------------------------
