@@ -1,5 +1,5 @@
 
-exports ?= this
+exports = this
 
 # TODO
 # ==============================================================================
@@ -69,7 +69,7 @@ reset = ->
 	    border-spacing: 0;
     }
     """
-  $("html head").append style
+  $("html head").prepend style.$
 
 
 # Typography
@@ -255,24 +255,25 @@ HTML = {}
 
 do ->
   HTML.Element = class Element
-    constructor: (elt)
+    constructor: (elt) ->
       if not (this instanceof HTML.Element)
         return new HTML.Element(elt)
 
       if elt instanceof HTML.Element
         return elt
       else if type(elt) is "string"
-        return HTML.Element(document.createTextNode(elt))
+        return HTML.Element($(document.createTextNode(elt)))
       else if elt instanceof jQuery
         this.$ = elt
         return this
       else if elt?.tagName? # DOM node
         return HTML.Element $(elt)
       else
-        throw "invalid element: #{elt}."
-      new_children.push child
+        error  = "HTML.Element(elt) -- invalid element of type #{type(elt)}:\n"
+        error += "#{elt}"
+        throw error
 
-    shift = (attributes, children) ->
+    Element.shift = (attributes, children) ->
       attributes ?= {}
       if type(attributes) isnt "object" or 
       (attributes instanceof jQuery) or 
@@ -296,16 +297,16 @@ do ->
 
   for tag in tags
     do (tag) ->
-      HTML[tag] = class extends HTML.Element
+      HTML[tag] = cls = class extends HTML.Element
         constructor: (attributes, children...) ->
            if not (this instanceof cls)
-             return new cls(attributes, children)
+             return new cls(attributes, children...)
            [attributes, children] = HTML.Element.shift(attributes, children)
-           children = HTML.Element(child) for child in children
+           children = (HTML.Element(child) for child in children)
            this.$ = $("<#{tag}></#{tag}>", attributes)
            this.$.append(child.$) for child in children
 
-  HTML.CustomElement = class CustomElement
+  HTML.CustomElement = class CustomElement extends HTML.Element
     constructor: ->
       if this.constructor is CustomElement
         throw "CustomElement class is abstract"
@@ -381,8 +382,10 @@ do ->
 # A declarative version of properties (with defaults) would be nice to have,
 # to avoid most of the boilerplate in the constructor. We could reduce it by
 # 90% ...Have a look at React props ?
-HTML AutoProps class Icon extends Component
+HTML.Icon = AutoProps class Icon extends HTML.CustomElement
   constructor: (options) ->
+    if not (this instanceof HTML.Icon)
+      return new HTML.Icon(options)
     if not options.type?
       throw "undefined icon type"
     else
@@ -399,7 +402,9 @@ HTML AutoProps class Icon extends Component
         delete options[property]
         this["_#{property}"] ?= false
 
-    super "i", options
+    # factor out this pattern ? ("customize / wrap" ?)
+    this.$ = HTML.i(options).$
+    this.$.data "elt", this
 
     this.$.addClass "fa"
     # Synchronize DOM with state
@@ -454,23 +459,31 @@ HTML AutoProps class Icon extends Component
       error = "invalid icon size: #{size} is not in [#{sizes}]" 
       throw error
   
-# This is a bit ugly, should encapsulate/wrap an icon instead.
-HTML class MathJaxLoader extends Icon
+
+HTML.MathJaxLoader = class MathJaxLoader extends HTML.CustomElement
   constructor: (options) ->
+    if not (this instanceof HTML.MathJaxLoader)
+      return new HTML.MathJaxLoader(options)
     options.type = "cog"
-    super options
+    
+    this.icon = HTML.Icon(options)
+    this.$ = this.icon.$
+    this.$.data "elt", this
+
     this.$.addClass "mathjax-loader"
-    this.spin = true
+    this.icon.spin = true
     MathJax.Hub.Register.StartupHook "End", => 
-      this.spin = false
+      this.icon.spin = false
       this.$.css display: "none"
 
   debug: ->
     MathJax.Hub.signal.Interest (msg) -> 
       console.log "MathJax:", msg[0]
 
-HTML class SwitchButton extends Component
+HTML.SwitchButton = class SwitchButton extends HTML.CustomElement
   constructor: (options) ->
+    if not (this instanceof HTML.SwitchButton)
+      return new HTML.SwitchButton(options)
     {@typeOn, @typeOff} = options or {}
     delete options.typeOn
     delete options.typeOff
@@ -479,8 +492,14 @@ HTML class SwitchButton extends Component
     options.css ?= {}
     options.css.cursor ?= "pointer"
 
-    this.icon = HTML.Icon type: this.typeOff
-    super "div", options, this.icon.$
+    this.icon = HTML.Icon(type: this.typeOff)
+
+    console.log "icon dump", this.icon.$[0].outerHTML 
+    this.$ = HTML.div(options, this.icon).$
+ 
+    console.log "button dump", this.$[0].outerHTML
+
+    this.$.data "elt", this
 
     this.off()
     this.$.on "click": => this.toggle()
@@ -541,8 +560,10 @@ HTML class SwitchButton extends Component
 #    Do some experiments on code creation first, then see how to connect this
 #    to pandoc output.
 
-HTML class CodeBlock extends Component
+HTML.CodeBlock = class CodeBlock extends HTML.CustomElement
   constructor: (options) ->
+    if not (this instanceof HTML.CodeBlock)
+      return new HTML.CodeBlock(options)
     options ?= {}
     this.text = options.text
     this.text ?= ""
@@ -562,11 +583,13 @@ HTML class CodeBlock extends Component
 
 # Deck / Panels
 # ------------------------------------------------------------------------------
-HTML class Panels extends Component # TODO: rename "Deck" ? 
+HTML.Panels = class Panels extends HTML.CustomElement # TODO: rename "Deck" ? 
 # Shit, needs some jQuery args, no automatic promotion.
   constructor: (options, items...) ->
+    if not (this instanceof HTML.Panels)
+      return new HTML.Panels(options, items...)
 
-    super "div", options
+    this.$ = HTML.div(options).$
 
     overlay = HTML.div
       class: "overlay"
@@ -587,16 +610,16 @@ HTML class Panels extends Component # TODO: rename "Deck" ?
     divs = []
 
     for item, i in items
-      divs.push HTML.div(css: css(), item)
+      divs.push HTML.div(css: css(), item).$
 
-    this.$.append HTML.div
+    this.$.append HTML.div(
         css:
           position: "relative"
           width: "100%", height: "100%"
           overflowX: "hidden"
           overflowY: "hidden"
         overlay
-        divs...
+        divs...).$
 
     this.inner = this.$.children()
     this.items = this.inner.children()
@@ -626,16 +649,18 @@ HTML class Panels extends Component # TODO: rename "Deck" ?
 # ------------------------------------------------------------------------------
 
 # TODO: update the style (background) of the active section, maybe autofocus.
-HTML class TOC extends Component
+HTML.TOC = class TOC extends HTML.CustomElement
   constructor: (options) ->
+    if not (this instanceof HTML.TOC)
+      return new HTML.TOC(options)
     root = options.root
     options.root = undefined
 
-    super "div", options
+    this.$ = HTML.div(options).$
 
     this.$.css overflow: "hidden"
     this.$.append HTML.h1 "Contents"
-    this.$.append this.nav = HTML.nav (TOC.outline(root))
+    this.$.append this.nav = HTML.nav(TOC.outline(root)).$
 
     this.style()
     this.show()
@@ -680,8 +705,9 @@ HTML class TOC extends Component
     this.$.css display: "none"
 
   # Remark: we rely ONLY on section tags for nesting, not headings levels.
-  this.outline = (root = undefined) ->
-    root ?= $("body")    
+  this.outline = (root) ->
+    if root?.$ instanceof jQuery
+      root = root.$   
     list = $("<ul></ul>")
     root.children().each ->
       tag = this.nodeName.toLowerCase()
@@ -734,7 +760,7 @@ setupTOC = () ->
   $("body").prepend hamburger.$
 
   # Create the table of contents
-  toc = HTML.TOC
+  window.toc = toc = HTML.TOC
     root: 
       main
     css: 
@@ -751,6 +777,8 @@ setupTOC = () ->
     toc,
     main
 
+  console.log "panel:", panel.$[0].outerHTML
+
   $("body").append panel.$
 
   # table of contents: close on click
@@ -760,7 +788,7 @@ setupTOC = () ->
     on: -> panel.setIndex 0
     off: -> panel.setIndex 1
 
-  hamburger.connect 
+  hamburger.connect # WTF ? toc.focus is not a function ?
     on: -> toc.focus() # hook in a better place (refactor anchor click callbacks)
 
   hamburger.off()
@@ -825,7 +853,7 @@ $ ->
   kthxbye()
   """
 
-  body.prepend HTML.CodeBlock(text: code).$
+  #body.prepend HTML.CodeBlock(text: code).$
 
   setupTOC()
 
@@ -839,7 +867,7 @@ $ ->
   styleText()
 
   #testAnim()
-
++
   $(document).on "keydown", (event) ->
     switch event.which
       when "S".charCodeAt(0)
