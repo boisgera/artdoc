@@ -483,10 +483,11 @@ HTML.MathJaxLoader = class MathJaxLoader extends HTML.CustomElement
     MathJax.Hub.Register.StartupHook "End", => 
       this.icon.spin = false
       this.$.css display: "none"
+      this.done()
 
-  debug: ->
-    MathJax.Hub.signal.Interest (msg) -> 
-      console.log "MathJax:", msg[0]
+  done: ->
+    console.log "done"
+
 
 HTML.SwitchButton = class SwitchButton extends HTML.CustomElement
   constructor: (options) ->
@@ -589,7 +590,11 @@ HTML.CodeBlock = class CodeBlock extends HTML.CustomElement
 # ------------------------------------------------------------------------------
 
 
-# TODO: hook the shit out of MathJax to refocus on the TOC is necessary.
+# TODO: for some reason, when I let the TOC totally scroll into the screen,
+#       there is a sudden change to the main doc when I close it, not a 
+#       smooth animation. (this has the side effect that we see the text
+#       shake for a moment ...). Investigate ...
+# TODO: reload is fucked up, the deck needs one second to stabilize its position.
 HTML.Deck = AutoProps class Deck extends HTML.CustomElement
   constructor: (attributes, children...) ->
     if not (this instanceof HTML.Deck)
@@ -627,6 +632,10 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
     this.cards = this.$.find(".cards").children()
     this.index = 0
 
+  resetScroll: () ->
+    cardHolder = this.$.find(".cards")
+    cardHolder.scrollLeft(0)
+
   getIndex: -> this._index
 
   setIndex: (index) ->
@@ -636,8 +645,8 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
       if i < index
         $(this).css transform: "translateX(-100%)", zIndex: -1
       else if i is index
-        $(this).css transform: "translateX(0%)", zIndex: 0
         $(this).focus()
+        $(this).css transform: "translateX(0%)", zIndex: 0
       else if i > index
         $(this).css transform: "translateX(100%)", zIndex: -1
 
@@ -857,7 +866,12 @@ $ ->
   middleLeft = 
     css: {position: "fixed", top: "50%", left: "1em"}
   loader = HTML.MathJaxLoader(middleLeft)
+  loader.connect # prevent Mathjax loader to refocus on the math content.
+    done: ->
+      dontYouFuckDareToMove = window.setInterval (-> window.deck.resetScroll()), 10
+      window.setTimeout (-> window.clearInterval dontYouFuckDareToMove), 1000
   body.prepend loader.$
+
 
   manageLinks()
   
