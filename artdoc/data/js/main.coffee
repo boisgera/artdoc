@@ -841,6 +841,17 @@ $ ->
 
   reset()
 
+  python = 
+    """
+    if True:
+      a = 1
+    else:
+      b = 42
+    """
+
+  console.log window.hljs
+
+
   body = $("body")
   html = $("html")
   body.css 

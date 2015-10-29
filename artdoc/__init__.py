@@ -155,6 +155,8 @@ def velocity(*args, **kwargs):
 def clipboard(*args, **kwargs):
     return [HTML.script(src=str(ARTDOC / "js" / "clipboard.js"))]
 
+def highlight(*args, **kwargs):
+    return [HTML.script(src=str(ARTDOC / "js" / "highlight.pack.js"))]
 
 # TODO: resolve ARTDOC wrt WORKDIR, then use this instead of the hardcoded paths.
 def artdoc():
@@ -346,6 +348,9 @@ def main():
         info("Add Clipboard.js")
         head.extend(clipboard(standalone=standalone))
 
+        # ----------------------------------------------------------------------
+        info("Add Highlight.js")
+        head.extend(highlight(standalone=standalone))
 
         # ----------------------------------------------------------------------
         info("Add Google Fonts support")
