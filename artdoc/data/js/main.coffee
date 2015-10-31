@@ -261,67 +261,89 @@ do ->
 #      (new Component(tag, args...)).$
 
 
-# CSS Reset
+# Style Helpers
 # ==============================================================================
-reset = ->
-  style = HTML.style type:"text/css",
-    """
-    /* http://meyerweb.com/eric/tools/css/reset/ 
-       v2.0 | 20110126
-       License: none (public domain)
-    */
 
-    html, body, div, span, applet, object, iframe,
-    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-    a, abbr, acronym, address, big, cite, code,
-    del, dfn, em, img, ins, kbd, q, s, samp,
-    small, strike, strong, sub, sup, tt, var,
-    b, u, i, center,
-    dl, dt, dd, ol, ul, li,
-    fieldset, form, label, legend,
-    table, caption, tbody, tfoot, thead, tr, th, td,
-    article, aside, canvas, details, embed, 
-    figure, figcaption, footer, header, hgroup, 
-    menu, nav, output, ruby, section, summary,
-    time, mark, audio, video {
-	    margin: 0;
-	    padding: 0;
-	    border: 0;
-	    font-size: 100%;
-	    font: inherit;
-	    vertical-align: baseline;
-    }
-    /* HTML5 display-role reset for older browsers */
-    article, aside, details, figcaption, figure, 
-    footer, header, hgroup, menu, nav, section {
-	    display: block;
-    }
-    body {
-	    line-height: 1;
-    }
-    ol, ul {
-	    list-style: none;
-    }
-    blockquote, q {
-	    quotes: none;
-    }
-    blockquote:before, blockquote:after,
-    q:before, q:after {
-	    content: '';
-	    content: none;
-    }
-    table {
-	    border-collapse: collapse;
-	    border-spacing: 0;
-    }
-    """
-  $("html head").prepend style.$
+class Style
+  this.reset = ->
+    style = HTML.style type:"text/css",
+      """
+      /* http://meyerweb.com/eric/tools/css/reset/ 
+         v2.0 | 20110126
+         License: none (public domain)
+      */
 
+      html, body, div, span, applet, object, iframe,
+      h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+      a, abbr, acronym, address, big, cite, code,
+      del, dfn, em, img, ins, kbd, q, s, samp,
+      small, strike, strong, sub, sup, tt, var,
+      b, u, i, center,
+      dl, dt, dd, ol, ul, li,
+      fieldset, form, label, legend,
+      table, caption, tbody, tfoot, thead, tr, th, td,
+      article, aside, canvas, details, embed, 
+      figure, figcaption, footer, header, hgroup, 
+      menu, nav, output, ruby, section, summary,
+      time, mark, audio, video {
+	      margin: 0;
+	      padding: 0;
+	      border: 0;
+	      font-size: 100%;
+	      font: inherit;
+	      vertical-align: baseline;
+      }
+      /* HTML5 display-role reset for older browsers */
+      article, aside, details, figcaption, figure, 
+      footer, header, hgroup, menu, nav, section {
+	      display: block;
+      }
+      body {
+	      line-height: 1;
+      }
+      ol, ul {
+	      list-style: none;
+      }
+      blockquote, q {
+	      quotes: none;
+      }
+      blockquote:before, blockquote:after,
+      q:before, q:after {
+	      content: '';
+	      content: none;
+      }
+      table {
+	      border-collapse: collapse;
+	      border-spacing: 0;
+      }
+      """
+    $("html head").prepend style.$
+
+  this.apply = (styleSheet, context) ->
+    styleSheet ?= {}
+    if type(styleSheet) is "array"
+      for _styleSheet in styleSheet
+        Style.apply _styleSheet, context
+      return undefined
+
+    for selector, assignments of styleSheet
+      if not context?
+        subcontext = $(selector)
+      else
+        subcontext = context.find(selector)
+      for name, value of assignments
+        if type(value) in ["number", "string"]
+          subcontext.css(name, value)
+        else if type(value) is "object"
+          style = {}
+          style[name] = value
+          Style.apply style, subcontext
+        else
+          throw "Style.apply -- invalid #{property} value: #{value}"
+    return undefined
 
 # Typography
 # ==============================================================================
-
-# TODO: transform everything here.
 
 styleText = ->
   fontSize =
@@ -331,32 +353,32 @@ styleText = ->
     xLarge: "36px"
     huge: "48px"
 
-  $("body").css
-    fontFamily: "Alegreya, serif"
-    fontSize: fontSize.medium
-    fontWeight: "normal"
-    lineHeight: 1.5
-    textAlign: "justify"
-    textRendering: "optimizeLegibility"
-    hyphens: "auto"
-    MozHyphens: "auto"
-
-  $("h1, h2, h3").css
-    margin: "0.5em 0em 0.5em 0em"
-
-  $("h1").css
-    fontSize: fontSize.xLarge
-    fontWeight: "bold"
-
-  $("h2").css
-    fontSize: fontSize.large
-    fontWeight: "bold"
-
-  $("h3").css
-    fontSize: fontSize.medium
-    fontWeight: "bold"
-
-  $("h4, h5, h6").css
+  Style.apply [
+    body:
+      fontFamily: "Alegreya, serif"
+      fontSize: fontSize.medium
+      fontWeight: "normal"
+      lineHeight: 1.5
+      textAlign: "justify"
+      textRendering: "optimizeLegibility"
+      hyphens: "auto"
+      MozHyphens: "auto"
+    em:
+      fontStyle: "italic"
+    strong:
+      fontWeight: "bold"
+    "h1, h2, h3":
+      margin: "0.5em 0em 0.5em 0em"
+    h1:
+      fontSize: fontSize.xLarge
+      fontWeight: "bold"
+    h2:
+      fontSize: fontSize.large
+      fontWeight: "bold"
+    h3:
+      fontSize: fontSize.medium
+      fontWeight: "bold"
+    "h4, h5, h6":
       fontSize: fontSize.medium
       fontWeight: "bold"
       float: "left"
@@ -364,20 +386,27 @@ styleText = ->
       marginTop: "0em"
       marginLeft: "0em"
       marginBottom: "0em"
+    p:
+      marginTop: "1em"
+      marginBottom: "1em"
+  ,
+    "main header":
+      h1:
+        fontSize: fontSize.huge
+        fontWeight: "bold"
+      ".author":
+        fontSize: fontSize.xLarge
+        fontWeight: "bold"
+  ]
 
-  $("h1", "main header").css 
-    fontSize: fontSize.huge
-    fontWeight: "bold"
-
-  $(".author", "main header").css
-    fontSize: fontSize.xLarge
-    fontWeight: "bold"
-
-  $("p").css
-    marginTop: "1em"
-    marginBottom: "1em"
-
-  return undefined
+  Style.apply
+    code:
+      color: "#000000"
+      backgroundColor: "#ebebeb"
+      fontFamily: "Inconsolata"
+    pre:
+      margin: "1em 0em 1em 0em"
+      padding: "0.5em 1em 0.5em 1em"
 
 # Icons
 # ==============================================================================
@@ -839,17 +868,16 @@ manageLinks = ->
 
 $ ->
 
-  reset()
+  Style.reset()
 
-  python = 
+  code = 
     """
-    if True:
-      a = 1
-    else:
-      b = 42
+    $ git clone whatever
     """
 
-  console.log window.hljs
+  # highlightAuto sucks too much ; maybe I could hack it and only get
+  # a good candidate within a language list (sy: bash, python, js, cs ?)
+  console.log window.hljs.highlightAuto code, ["Bash", "Python", "CoffeeScript", "JavaScript"]
 
 
   body = $("body")
