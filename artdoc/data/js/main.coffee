@@ -279,7 +279,7 @@ class Style
       del, dfn, em, img, ins, kbd, q, s, samp,
       small, strike, strong, sub, sup, tt, var,
       b, u, i, center,
-      dl, dt, dd, ol, ul, li,
+      dl, dt, dd, ul, ol, li,
       fieldset, form, label, legend,
       table, caption, tbody, tfoot, thead, tr, th, td,
       article, aside, canvas, details, embed, 
@@ -389,6 +389,22 @@ styleText = ->
     p:
       marginTop: "1em"
       marginBottom: "1em"
+    ul:
+      listStyleType: "disc"
+      li:
+        marginLeft: "2em"
+    table:
+      borderTopStyle: "solid"
+      borderBottomStyle: "solid"
+      borderWidth: "2px"
+      marginLeft: "auto"
+      marginRight: "auto"
+      borderCollapse: "collapse"
+      "td:not(:last-child), th:not(:last-child)":
+        paddingRight: "1em"
+      "tr.header":
+        borderWidth: "1.5px"
+        borderBottomStyle: "solid"
   ,
     "main header":
       h1:
@@ -401,10 +417,11 @@ styleText = ->
 
   Style.apply
     code:
-      color: "#000000"
-      backgroundColor: "#ebebeb"
+      fontSize: "20.5px"
       fontFamily: "Inconsolata"
     pre:
+      color: "#000000"
+      backgroundColor: "#ebebeb"
       margin: "1em 0em 1em 0em"
       padding: "0.5em 1em 0.5em 1em"
 
