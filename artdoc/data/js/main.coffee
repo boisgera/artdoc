@@ -389,10 +389,24 @@ styleText = ->
     p:
       marginTop: "1em"
       marginBottom: "1em"
+    sup:
+      verticalAlign: "super"
+      fontSize: fontSize.small
     ul:
       listStyleType: "disc"
       li:
         marginLeft: "2em"
+  ,
+    "main header":
+      h1:
+        fontSize: fontSize.huge
+        fontWeight: "bold"
+      ".author":
+        fontSize: fontSize.xLarge
+        fontWeight: "bold"
+  ]
+
+  Style.apply
     table:
       borderTopStyle: "solid"
       borderBottomStyle: "solid"
@@ -405,15 +419,6 @@ styleText = ->
       "tr.header":
         borderWidth: "1.5px"
         borderBottomStyle: "solid"
-  ,
-    "main header":
-      h1:
-        fontSize: fontSize.huge
-        fontWeight: "bold"
-      ".author":
-        fontSize: fontSize.xLarge
-        fontWeight: "bold"
-  ]
 
   Style.apply
     code:
@@ -422,8 +427,11 @@ styleText = ->
     pre:
       color: "#000000"
       backgroundColor: "#ebebeb"
-      margin: "1em 0em 1em 0em"
+      marginTop: "1em"
+      marginBottom: "1em"
       padding: "0.5em 1em 0.5em 1em"
+
+
 
 # Icons
 # ==============================================================================
@@ -532,8 +540,6 @@ HTML.MathJaxLoader = class MathJaxLoader extends HTML.CustomElement
       this.done()
 
   done: ->
-    console.log "done"
-
 
 HTML.SwitchButton = class SwitchButton extends HTML.CustomElement
   constructor: (options) ->
@@ -652,14 +658,12 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
       overflowX: "hidden" 
       position: "absolute",
       transition: "transform 1.2s cubic-bezier(0.0,0,0.25,1)"
-    cards = []
 
-    for child, i in children
-      card = HTML.div
-               css: css()
-               attr: tabindex: -1
-               child.$
-      cards.push card.$
+    cards = for child in children
+      HTML.div
+         css: css()
+         attr: tabindex: -1
+         child.$
 
     this.$.append (HTML.div
         class: "cards"
@@ -703,30 +707,48 @@ HTML.TOC = class TOC extends HTML.CustomElement
   constructor: (options) ->
     if not (this instanceof HTML.TOC)
       return new HTML.TOC(options)
+    options ?= {}
     root = options.root
-    options.root = undefined
+    if not root?
+      throw "TOC: undefined root"
+    delete options.root
+    options.css ?= {} 
+    options.css.overflow = "hidden"
 
-    this.$ = HTML.div(options).$
+    div = HTML.div options, 
+      HTML.h1 "Contents"
+      HTML.nav TOC.outline(root)
+    this.$ = div.$
 
-    this.$.css overflow: "hidden"
-    this.$.append HTML.h1 "Contents"
-    this.$.append this.nav = HTML.nav(TOC.outline(root)).$
+#    this.$.css overflow: "hidden"
+#    this.$.append HTML.h1 "Contents"
+#    this.$.append this.nav = HTML.nav(TOC.outline(root)).$
 
-    this.style()
+    #this.style()
     this.show()
 
   style : =>
-    $("li", this.nav).css 
-      listStyleType: "none"
-      margin: "0px"
 
-    anchors = $("a", this.nav)
-    anchors.css display: "block"
+
+    console.log "li:", this.$.find("li")
+
+#    this.$.find("li").css
+#      marginLeft: "0px" 
+#      listStyleType: "none"
+
+    console.log lis = this.$.find("li").first()
+    lis.css()
+
+
+    anchors = this.$.find("a")
+    anchors.css
+      textDecoration: "none"
+      display: "block"
     anchors.mouseenter -> $(this).css backgroundColor: "#a0a0a0"
     anchors.mouseleave -> $(this).css backgroundColor: ""
 
     indent = (root, level) =>
-      root ?= this.nav.find("ul").first()
+      root ?= this.$.find("ul").first()
       level ?= 0
       isTree = (elt) -> (elt.children().first().prop("tagName") is "UL")
       root.children("li").each (index, elt) ->
@@ -736,15 +758,12 @@ HTML.TOC = class TOC extends HTML.CustomElement
         else
           $(elt).children().first().css paddingLeft: 1.5 * level + "em"
 
-    indent()
-
-    $("a", this.nav).css
-      textDecoration: "none"       
+    indent() 
 
   # need to hook that to link click :(
   focus: => # find the active section, change the style accordingly
     hash = window.location.hash
-    anchor = this.nav.find("a[href='#{hash}']")
+    anchor = this.$.find("a[href='#{hash}']")
     anchor.css backgroundColor: "white" 
     # this is going to be overwritten at the first occasion do something else.
 
@@ -756,24 +775,22 @@ HTML.TOC = class TOC extends HTML.CustomElement
 
   # Remark: we rely ONLY on section tags for nesting, not headings levels.
   this.outline = (root) ->
-    if root?.$ instanceof jQuery
-      root = root.$   
-    list = $("<ul></ul>")
-    root.children().each ->
+    list = HTML.ul()
+    root.$.children().each ->
       tag = this.nodeName.toLowerCase()
       if tag in "h1 h2 h3 h4 h5 h6".split(" ")
         text = $(this).html()
-        list.append $("<li>#{text}</li>") if text
+        list.$.append $("<li>#{text}</li>") if text
       else if tag is "header"
-        outline = TOC.outline $(this)
-        list.append outline.children().first()
-        list.append outline.children().clone()
+        outline = TOC.outline HTML.Element(this)
+        list.$.append outline.$.children().first()
+        list.$.append outline.$.children().clone()
       else if tag is "div"
-        outline = TOC.outline $(this)
-        list.append outline.children() if outline.children().length > 0
+        outline = TOC.outline HTML.Element(this)
+        list.append outline.$.children() if outline.$.children().length > 0
       else if tag is "section"
-        outline = TOC.outline $(this)
-        list.append $("<li></li>").append(outline) if outline.children().length > 0
+        outline = TOC.outline HTML.Element(this)
+        list.$.append HTML.li(outline).$ if outline.$.children().length > 0
     return list
 
 
