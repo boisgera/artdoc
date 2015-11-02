@@ -392,10 +392,6 @@ styleText = ->
     sup:
       verticalAlign: "super"
       fontSize: fontSize.small
-    ul:
-      listStyleType: "disc"
-      li:
-        marginLeft: "2em"
   ,
     "main header":
       h1:
@@ -405,6 +401,12 @@ styleText = ->
         fontSize: fontSize.xLarge
         fontWeight: "bold"
   ]
+
+  Style.apply
+    main:
+      ul:
+        listStyleType: "disc"
+        li: marginLeft: "2em"
 
   Style.apply
     table:
@@ -702,8 +704,10 @@ HTML.Deck = AutoProps class Deck extends HTML.CustomElement
 # Table of Contents
 # ------------------------------------------------------------------------------
 
+
 # TODO: update the style (background) of the active section, maybe autofocus.
-HTML.TOC = class TOC extends HTML.CustomElement
+#       Think of the API for the active entry ... use the target (href) ?
+HTML.TOC = AutoProps class TOC extends HTML.CustomElement
   constructor: (options) ->
     if not (this instanceof HTML.TOC)
       return new HTML.TOC(options)
@@ -720,32 +724,26 @@ HTML.TOC = class TOC extends HTML.CustomElement
       HTML.nav TOC.outline(root)
     this.$ = div.$
 
-#    this.$.css overflow: "hidden"
-#    this.$.append HTML.h1 "Contents"
-#    this.$.append this.nav = HTML.nav(TOC.outline(root)).$
-
-    #this.style()
+    this.style()
     this.show()
 
   style : =>
 
-
-    console.log "li:", this.$.find("li")
-
-#    this.$.find("li").css
-#      marginLeft: "0px" 
-#      listStyleType: "none"
-
-    console.log lis = this.$.find("li").first()
-    lis.css()
-
+    toc = this
+    this.$.find("li").css
+      marginLeft: "0px" 
+      listStyleType: "none"
 
     anchors = this.$.find("a")
     anchors.css
       textDecoration: "none"
       display: "block"
     anchors.mouseenter -> $(this).css backgroundColor: "#a0a0a0"
-    anchors.mouseleave -> $(this).css backgroundColor: ""
+    anchors.mouseleave -> 
+      if $(this).attr("href") is toc.active 
+        $(this).css backgroundColor: "white" 
+      else
+        $(this).css backgroundColor: ""
 
     indent = (root, level) =>
       root ?= this.$.find("ul").first()
@@ -756,17 +754,32 @@ HTML.TOC = class TOC extends HTML.CustomElement
           ul = $(elt).children().first()
           indent ul, (level + 1)
         else
-          $(elt).children().first().css paddingLeft: 1.5 * level + "em"
+          $(elt).children().first().css paddingLeft: (0.5 + 1.5 * level) + "em"
 
     indent() 
 
-  # need to hook that to link click :(
-  focus: => # find the active section, change the style accordingly
-    hash = window.location.hash
-    anchor = this.$.find("a[href='#{hash}']")
-    anchor.css backgroundColor: "white" 
-    # this is going to be overwritten at the first occasion do something else.
+#  # need to hook that to link click :(
+#  focus: => # find the active section, change the style accordingly
+#    hash = window.location.hash
+#    anchor = this.$.find("a[href='#{hash}']")
+#    anchor.css backgroundColor: "white" 
+#    # this is going to be overwritten at the first occasion do something else.
 
+  getActive: -> this._active
+
+  setActive: (hash) ->
+    anchor = this.$.find("a[href='#{hash}']")
+    console.log anchor[0].outerHTML
+    if this._active?
+      anchor = this.$.find("a[href='#{this._active}']")
+      anchor.css backgroundColor: ""
+    this._active = hash
+    anchor = this.$.find("a[href='#{hash}']")
+    console.log "active anchor", anchor
+    anchor.css backgroundColor: "white"  
+    console.log anchor.css "backgroundColor"
+    console.log anchor[0].outerHTML
+      
   show: =>
     this.$.css display: "block"
 
@@ -830,7 +843,8 @@ setupTOC = () ->
   window.toc = toc = HTML.TOC
     root: 
       main # declare as a child instead ? Yes, more consistent.
-    css: 
+    css:
+      minHeight: "100vh"
       paddingLeft: "5em"
       backgroundColor: "#f0f0f0"
 
@@ -853,14 +867,15 @@ setupTOC = () ->
     on: -> deck.index = 0
     off: -> deck.index = 1
 
-  hamburger.connect # WTF ? toc.focus is not a function ?
-    on: -> toc.focus() # hook in a better place (refactor anchor click callbacks)
+#  hamburger.connect # WTF ? toc.focus is not a function ?
+#    on: -> toc.focus() # hook in a better place (refactor anchor click callbacks)
 
   hamburger.off()
 
 
 
-#<http://www.adriantomic.se/development/jquery-localscroll-tutorial/>
+# Source: <http://www.adriantomic.se/development/jquery-localscroll-tutorial/>
+# TODO: make an instantaneous scroll when the link is from the toc ?
 manageLinks = ->  
   $("a[href*=#]:not([href=#])").click (event) ->
     if location.pathname.replace(/^\//,'') is this.pathname.replace(/^\//,'') and
@@ -871,11 +886,16 @@ manageLinks = ->
       if not (holder.css("overflowY") in ["scroll", "auto"])
         throw "main holder has no scroll"
 
+      if $.contains(window.toc.$[0], this)
+        duration = 0
+      else
+        duration = 600
+
       target = $(this.hash)
       holder.animate
         scrollTop: holder.scrollTop() + target.offset().top
       ,    
-        duration: 600, 
+        duration: duration, 
         easing: "swing"
 
       # BUG: setting the location hash (directly or via pushState) "focuses"
@@ -885,11 +905,13 @@ manageLinks = ->
       hash = this.hash
       target = $(hash)
       target.attr id: "__" + hash[1...] + "__"
-      $("body").append empty = HTML.div
+      empty = (HTML.div
         id: hash[1...]
         css:
           position: "fixed"
           visibility: "hidden"
+      ).$
+      $("body").append empty
       location.hash = hash # Aah, nowhere to go now ! Shit, the bastard 
       # remembers the previous location ...
       empty.remove()
@@ -897,6 +919,8 @@ manageLinks = ->
       
       #baseUrl = location.toString()[...location.hash.length]
       #window.history.pushState {}, "", baseUrl + this.hash
+
+      window.toc.active = window.location.hash
 
       return false
 
